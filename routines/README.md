@@ -5,7 +5,7 @@
 ## 조립 (`build.py`)
 1. 규칙을 고친다: 해외는 이 폴더의 `_common.md`·`_stock.md`·`_etf.md`·`_crypto.md`·`_verifier.md`·`_brief.md`·`_event.md`, 국내는 `kr/routines/_kr_*.md`.
 2. (월 1회) `python3 scripts/backfill_history.py && python3 scripts/history_insights.py && python3 scripts/label_context.py`로 과거 판단 성과 표를 갱신한다.
-2-1. (월 1회, 포트폴리오 지표) 총괄이 RemoteTrigger 실행 기록을 `metrics/runs.jsonl`에 덧붙이고 Market Daily·Events를 view 모드로 다시 읽어 스냅숏(`metrics/verdicts.jsonl`, `metrics/events_snapshot.jsonl`)을 새로 만든 뒤 `python3 scripts/forward_track.py && python3 scripts/event_study.py && python3 scripts/signal_eval.py && python3 scripts/ops_metrics.py && python3 docs/build_case_study.py`를 돌린다. 다음 갱신 2026-10-25(KOSPI 가격 이력 추가 예정)
+2-1. (월 1회, 포트폴리오 지표) 총괄이 RemoteTrigger 실행 기록을 `metrics/runs.jsonl`에 덧붙이고 Market Daily·Events를 view 모드로 다시 읽어 스냅숏(`metrics/verdicts.jsonl`, `metrics/events_snapshot.jsonl`)을 새로 만든 뒤 `python3 scripts/forward_track.py && python3 scripts/event_study.py && python3 scripts/signal_eval.py && python3 scripts/ops_metrics.py && python3 docs/build_case_study.py`를 돌린다. 다음 갱신 일정은 미정(KOSPI 가격 이력 추가 예정)
 3. `python3 routines/build.py`를 실행한다 → 이 폴더에 `*.prompt.md` 9개(stock·etf·crypto·verifier·weekly·monthly·event·kr_desk·kr_verifier)가 다시 만들어지고 글자 수가 찍힌다.
 4. 바뀐 `*.prompt.md`를 루틴에 다시 올려 달라고 총괄에게 요청한다(루틴 등록·수정은 총괄만).
 

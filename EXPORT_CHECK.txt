@@ -1,4 +1,4 @@
-export 시각: 2026-11-06 10:05 KST
+export 시각: 2026-11-06 10:22 KST
 복사한 파일: 113개 (가림 없이 그대로 복사한 비텍스트 0개) + 생성 docs/rules.md 1개 + 보존 README.md
 폴더별: (최상위) 1, .claude 4, docs 7, eval 46, examples 3, kr 4, metrics 17, routines 20, scripts 11
 rules.md에서 뺀 줄: 0개

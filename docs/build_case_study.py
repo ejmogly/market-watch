@@ -353,7 +353,7 @@ page = f"""<title>market-watch 사례 연구</title>
     <div><span class="k">{T("낙폭 줄인 자산", "lower drawdown")}</span><span class="v c-amb">{shallow}<small>/{n_assets}</small></span><span class="c">{T(f"수익 우위는 {beat}/{n_assets}", f"higher return only {beat}/{n_assets}")}</span></div>
     <div><span class="k">{T("재계산 일치", "recomputed match")}</span><span class="v c-vi">{ev_match}<small>/{len(ev_db)}</small></span><span class="c">{T("이벤트 반응 행", "event reaction rows")}</span></div>
   </div>
-  <p class="note">{T(f"스냅숏 {snap} · 운영 데이터 이틀치 초기값 · 2026-10-25 갱신 예정 · 투자 권유 아님", f"snapshot {snap} · two days of ops data, early numbers · refresh 2026-10-25 · not investment advice")}</p>
+  <p class="note">{T(f"스냅숏 {snap} · 운영 데이터 이틀치 초기값 · 투자 권유 아님", f"snapshot {snap} · two days of ops data, early numbers · not investment advice")}</p>
 </header>
 
 <section id="arch">
@@ -436,7 +436,7 @@ page = f"""<title>market-watch 사례 연구</title>
 <section>
   <div class="sh"><span class="idx">06 / {T("한계", "limits")}</span><h2>{T("아직 말할 수 없는 것", "What this can't claim yet")}</h2></div>
   <ul class="lim">
-    <li>{T("운영 데이터가 이틀치입니다. 성공률과 재발 여부는 2026-10-25에 다시 잽니다.", "Two days of operations data; success and recurrence are re-measured on 2026-10-25.")}</li>
+    <li>{T("운영 데이터가 이틀치입니다. 성공률과 재발 여부는 아직 다시 재지 않았습니다.", "Two days of operations data; success and recurrence have not been re-measured yet.")}</li>
     <li>{T("평가 세트는 20행+holdout 8행이라 결함 1건이 8~17%p입니다. 문장 판정은 같은 계열 모델이 합니다.", "The eval set has 20 + 8 holdout rows (one defect = 8–17 pp), and sentence-level judgments come from the same model family.")}</li>
     <li>{T("토큰·비용은 실행 로그에 나오지 않아 재지 못했습니다.", "Token cost isn't exposed in run logs, so it wasn't measured.")}</li>
     <li>{T("가격 일부는 비공식 경로에서 받았고, 모든 행에 그 사실을 적습니다. 투자 권유가 아닙니다.", "Some prices come from unofficial endpoints, flagged on every row. Not investment advice.")}</li>

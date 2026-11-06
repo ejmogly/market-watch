@@ -60,7 +60,7 @@ out = {
 g = out["guardrails"]
 L = ["# 운영 지표 (루틴 실행 장부)", "",
      f"- 스냅숏 {out['snapshot_at_utc']} · 실행 {out['runs_total']}회(로그 전체 확인 {out['runs_log_read']}회) · 입력 `metrics/runs.jsonl`",
-     f"- 데이터가 이틀치라 **초기 수치**다. 2026-10-25에 다시 받는다.", "",
+     f"- 데이터가 이틀치라 **초기 수치**다.", "",
      "## 요약", "",
      f"| 지표 | 값 |", "|---|---|",
      f"| 예약 실행 성공 | {out['scheduled_success']} / {out['scheduled_runs']} |",
