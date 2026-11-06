@@ -1,0 +1,182 @@
+[
+ {
+  "id": "F01",
+  "asset": "GOOGL",
+  "expected": "ERROR",
+  "fault_key": "news_date",
+  "fault_type": "뉴스 날짜를 검색 결과 날짜로 적음(원문 게재 7일 초과)",
+  "issue_no": 13,
+  "note": "원문 최초 게재일 2026-08-19, 행은 2026-09-21. 기사 제목은 eval용 가상"
+ },
+ {
+  "id": "F02",
+  "asset": "VOO",
+  "expected": "PASS",
+  "fault_key": "normal",
+  "fault_type": "정상",
+  "issue_no": null,
+  "note": ""
+ },
+ {
+  "id": "F03",
+  "asset": "SMH",
+  "expected": "ERROR",
+  "fault_key": "ma_mismatch",
+  "fault_type": "이동평균 수치 불일치",
+  "issue_no": null,
+  "note": "50일선을 재계산값보다 12달러 낮게 적음(판단 라벨은 그대로)"
+ },
+ {
+  "id": "F04",
+  "asset": "GOOGL",
+  "expected": "PASS",
+  "fault_key": "normal",
+  "fault_type": "정상",
+  "issue_no": null,
+  "note": ""
+ },
+ {
+  "id": "F05",
+  "asset": "ETH",
+  "expected": "ERROR",
+  "fault_key": "no_disclaimer",
+  "fault_type": "고지 문구 누락",
+  "issue_no": null,
+  "note": ""
+ },
+ {
+  "id": "F06",
+  "asset": "QQQM",
+  "expected": "PASS",
+  "fault_key": "normal",
+  "fault_type": "정상",
+  "issue_no": null,
+  "note": ""
+ },
+ {
+  "id": "F07",
+  "asset": "TSLA",
+  "expected": "WARNING",
+  "fault_key": "short_title",
+  "fault_type": "출처 칸 기사 제목 축약",
+  "issue_no": 10,
+  "note": "원문 제목 전체와 다름"
+ },
+ {
+  "id": "F08",
+  "asset": "SpaceX",
+  "expected": "PASS",
+  "fault_key": "normal",
+  "fault_type": "정상",
+  "issue_no": null,
+  "note": ""
+ },
+ {
+  "id": "F09",
+  "asset": "VOO",
+  "expected": "ERROR",
+  "fault_key": "stop_rounded",
+  "fault_type": "손절선을 반올림 후 하단으로 계산",
+  "issue_no": 2,
+  "note": "옳은 값 687, 행 값 686"
+ },
+ {
+  "id": "F10",
+  "asset": "SMH",
+  "expected": "PASS",
+  "fault_key": "normal",
+  "fault_type": "정상",
+  "issue_no": null,
+  "note": ""
+ },
+ {
+  "id": "F11",
+  "asset": "TSLA",
+  "expected": "ERROR",
+  "fault_key": "label",
+  "fault_type": "한 줄 판단 라벨 규칙 위반",
+  "issue_no": null,
+  "note": "가격<200일선, 50일선<200일선인데 관망"
+ },
+ {
+  "id": "F12",
+  "asset": "NVDA",
+  "expected": "PASS",
+  "fault_key": "normal",
+  "fault_type": "정상",
+  "issue_no": null,
+  "note": ""
+ },
+ {
+  "id": "F13",
+  "asset": "NVDA",
+  "expected": "ERROR",
+  "fault_key": "op_tag",
+  "fault_type": "사실 문장에 (의견) 태그",
+  "issue_no": 9,
+  "note": "목표가 괴리 %는 계산 사실인데 (의견)을 붙임"
+ },
+ {
+  "id": "F14",
+  "asset": "ETH",
+  "expected": "WARNING",
+  "fault_key": "easy_value",
+  "fault_type": "'쉽게 말하면' 칸에 출처별 값",
+  "issue_no": 11,
+  "note": "설명 칸에 수치를 넣음"
+ },
+ {
+  "id": "F15",
+  "asset": "TSLA",
+  "expected": "PASS",
+  "fault_key": "normal",
+  "fault_type": "정상",
+  "issue_no": null,
+  "note": ""
+ },
+ {
+  "id": "F16",
+  "asset": "QQQM",
+  "expected": "WARNING",
+  "fault_key": "unofficial",
+  "fault_type": "출처 (비공식 경로) 표기 누락",
+  "issue_no": 12,
+  "note": "수치는 모두 맞음"
+ },
+ {
+  "id": "F17",
+  "asset": "SMH",
+  "expected": "ERROR",
+  "fault_key": "take_round",
+  "fault_type": "차익 실현 하단 반올림 방향 오류",
+  "issue_no": 3,
+  "note": "하단 671.83를 올림 → 672"
+ },
+ {
+  "id": "F18",
+  "asset": "BTC",
+  "expected": "PASS",
+  "fault_key": "normal",
+  "fault_type": "정상",
+  "issue_no": null,
+  "note": ""
+ },
+ {
+  "id": "F19",
+  "asset": "SpaceX",
+  "expected": "ERROR",
+  "fault_key": "no200",
+  "fault_type": "200일선 없는 종목 판단 보류",
+  "issue_no": 4,
+  "note": "50일선 기준 대체 규칙을 쓰지 않고 칸을 비움"
+ },
+ {
+  "id": "F20",
+  "asset": "BTC",
+  "expected": "ERROR",
+  "fault_key": "forecast",
+  "fault_type": "판단 섹션 밖 전망 단정",
+  "issue_no": null,
+  "note": "요약에 전망 단정(요약 3번째 문장을 바꿈)"
+ }
+]

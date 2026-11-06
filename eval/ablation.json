@@ -1,0 +1,127 @@
+{
+ "설명": "ablated 판본 = full 판본에서 아래 ablated 목록의 original을 replacement로 바꾼 것(빈 문자열 = 삭제). common_excluded는 두 판본 모두에 적용. original은 routines/_common.md·_verifier.md 원문 그대로(2026-09-27 기준).",
+ "유지한 것(출처가 이슈 기록인지 불명확)": [
+  "_verifier.md '4. 태그: 사실 문장에 (의견), 판단 문장에 사실 태그가 없는지.'",
+  "_verifier.md '5. 뉴스: 최근 7일 기사인지, 제목이 원문과 같은지 링크를 열어 확인.'",
+  "_common.md 본문 구성 '최근 7일 안의 기사만'(이슈 이전 CLAUDE.md 규칙)",
+  "판정표 '출처/태그 종류 = ERROR'(실습 2에서 가져온 규칙)"
+ ],
+ "common_excluded": [
+  {
+   "file": "_common.md",
+   "original": "## 과거 판단 성과 참고 (2026-09-26 추가)\n- \"그래서 어떻게 볼까\"에서 한 줄 판단 문장 바로 다음에 한 줄을 씁니다: `과거 참고: 2025-01 이후 이 자산이 '<오늘 판단>'이었던 <N>일, 그 뒤 60거래일 평균 수익률 <X>%, 오른 비율 <Y>%다 (산출)`. 판단 근거 칸 마지막 줄에도 같은 내용을 짧게 넣습니다.\n- 숫자는 맨 아래 **과거 판단 성과 표**에서 그 자산·그 판단 칸을 그대로 옮깁니다. 새로 계산하지 않습니다. 칸이 `없음`이면 `과거 참고: 같은 판단의 과거 표본 없음`이라고 씁니다. N이 30일 미만이면 끝에 `(표본 적음)`을 붙입니다.\n- 표가 오늘 판단과 반대 방향을 가리켜도(예: 관심인데 평균이 음수) 한 줄 판단 라벨과 구간은 규칙대로 둡니다. 해석이 필요하면 판단 문장으로 한 문장만 덧붙이고 (의견)을 붙입니다. 과거 수익률로 앞날을 단정하지 않습니다.\n\n",
+   "replacement": "",
+   "reason": "_common.md '과거 판단 성과 참고' 절(#17) — 과거 성과 표가 fixture에 없어 판정할 수 없음"
+  },
+  {
+   "file": "_verifier.md",
+   "original": "- `과거 참고` 줄(2026-09-26 추가)은 다시 계산하지 않고 아래 **과거 판단 성과 표**의 그 자산·그 판단 칸과 같은지만 봅니다. 숫자가 다르거나 다른 판단의 칸을 옮겼으면 ERROR, 줄이 빠졌으면 WARNING입니다. 그 뒤 붙은 해석 문장은 (의견) 태그가 있는지만 봅니다.\n",
+   "replacement": "",
+   "reason": "_verifier.md '과거 참고' 줄 판정 기준(#17) — 같은 이유"
+  }
+ ],
+ "ablated": [
+  {
+   "issue": "15·18",
+   "file": "_common.md",
+   "original": "- **여러 행 읽기는 view 모드만 씁니다**(한도 없음). `notion-query-data-sources`의 SQL 모드와 rows 모드는 워크스페이스 사용 한도에 걸리므로 쓰지 않습니다. 호출 형식: `{\"data\": {\"mode\": \"view\", \"view_url\": \"<아래 URL>\", \"page_size\": 100}}` — `has_more`가 true면 `start_cursor`로 이어 받습니다. 필터가 필요하면 view로 받은 뒤 python3로 거릅니다.\n\n  | DB | 용도 | view_url |\n  |---|---|---|\n  | Market Daily | 검증 대기 | `https://app.notion.com/p/<NOTION_ID>?v=<NOTION_ID>` |\n  | Market Daily | 최신(자산별 1행) | `https://app.notion.com/p/<NOTION_ID>?v=<NOTION_ID>` |\n  | Market Daily | 전체, 기준 시각 최근순 | `https://app.notion.com/p/<NOTION_ID>?v=<NOTION_ID>` |\n  | 주식 데이터 | 검증 대기 | `https://app.notion.com/p/<NOTION_ID>?v=<NOTION_ID>` |\n  | 주식 데이터 | 최신(종목별 1행) | `https://app.notion.com/p/<NOTION_ID>?v=<NOTION_ID>` |\n  | 주식 데이터 | 전체, 기준일 최근순 | `https://app.notion.com/p/<NOTION_ID>?v=<NOTION_ID>` |\n  | Market Briefing | 검증 대기 | `https://app.notion.com/p/<NOTION_ID>?v=<NOTION_ID>` |\n  | Market Briefing | 전체, 기간 끝 최근순 | `https://app.notion.com/p/<NOTION_ID>?v=<NOTION_ID>` |\n  | Events | 검증 대기 | `https://app.notion.com/p/<NOTION_ID>?v=<NOTION_ID>` |\n  | Events | 전체, 일자순 | `https://app.notion.com/p/<NOTION_ID>?v=<NOTION_ID>` |\n\n  view 모드도 실패하면 `notion-search`(data_source_url 지정)로 페이지를 찾고 `notion-fetch`로 읽습니다. 쓰기는 `notion-create-pages`·`notion-update-page`를 씁니다. 이 view들(이름이 `[루틴]`으로 시작)은 고치거나 지우지 않습니다.\n",
+   "replacement": ""
+  },
+  {
+   "issue": 22,
+   "file": "_common.md",
+   "original": "- **알림 금지**: PushNotification 같은 휴대폰·앱 알림 도구는 쓰지 않습니다(설정에서도 막혀 있음). 결과는 Notion과 마지막 보고에만 남깁니다.\n",
+   "replacement": ""
+  },
+  {
+   "issue": 22,
+   "file": "_common.md",
+   "original": "- **이메일**: 외부 요청에 연락처 이메일이 필요하면(SEC EDGAR User-Agent 등) `<CONTACT_EMAIL>`만 씁니다. 허용되지 않은 도메인 주소는 절대 쓰지 않고, 이메일 주소를 지어내지 않습니다.\n",
+   "replacement": ""
+  },
+  {
+   "issue": 6,
+   "file": "_common.md",
+   "original": "본문 문장에는 링크를 넣지 않고, 도메인 대신 매체명만 씁니다(Notion 자동 링크 방지).",
+   "replacement": "본문 문장에는 링크를 넣지 않습니다."
+  },
+  {
+   "issue": 10,
+   "file": "_common.md",
+   "original": " 기사 제목은 원문 제목 전체.",
+   "replacement": ""
+  },
+  {
+   "issue": 5,
+   "file": "_common.md",
+   "original": "- 같은 값을 두 출처에서 확인할 수 있으면 확인하고, 다르면 값 칸 괄호나 표 아래 메모에 둘 다 적습니다(엔드포인트와 조회 시각 포함).\n",
+   "replacement": ""
+  },
+  {
+   "issue": 12,
+   "file": "_common.md",
+   "original": "- 비공식 데이터 경로(웹사이트 내부 API)를 쓰면 출처 칸의 **그 출처 줄마다** `(비공식 경로)`를 붙입니다. Yahoo Finance의 `query1`·`query2.finance.yahoo.com`(chart, quoteSummary 등), Nasdaq `api.nasdaq.com`, CoinGecko `api.coingecko.com`(무료 공개 API가 아닌 내부 경로일 때), stockanalysis 내부 JSON이 모두 해당합니다. 사람이 보는 시세 페이지 URL만 쓴 경우는 해당하지 않습니다.\n",
+   "replacement": "- 비공식 데이터 경로(웹사이트 내부 API)를 쓰면 출처 칸에 `(비공식 경로)`를 붙입니다.\n"
+  },
+  {
+   "issue": 13,
+   "file": "_common.md",
+   "original": "- **뉴스 날짜**는 기사 원문 페이지에서 확인한 **최초 게재일**입니다. 검색 결과에 보이는 날짜나 수정(업데이트)일을 쓰지 않습니다. 원문에서 게재일을 확인할 수 없는 기사는 쓰지 않습니다. 최초 게재일이 기준일로부터 7일보다 오래됐으면 수정일이 최근이어도 쓰지 않습니다.\n",
+   "replacement": ""
+  },
+  {
+   "issue": 7,
+   "file": "_common.md",
+   "original": "- 가격 이력 요청 사이에 간격을 두고, 429가 나면 재시도하거나 다른 출처(Nasdaq 등)로 채우고 본문에 밝힙니다.\n",
+   "replacement": ""
+  },
+  {
+   "issue": 11,
+   "file": "_common.md",
+   "original": ". \"쉽게 말하면\" 칸에는 풀어 쓴 설명만",
+   "replacement": ""
+  },
+  {
+   "issue": 9,
+   "file": "_common.md",
+   "original": "- \"그래서 어떻게 볼까\" 안에서도 사실 문장(\"지금 가격은 구간 위\", \"목표가가 45% 높다\")에는 (확인)/(산출)/(계산)을 붙이고, (의견)은 판단 문장에만 붙입니다.\n",
+   "replacement": ""
+  },
+  {
+   "issue": 4,
+   "file": "_common.md",
+   "original": "- 200일선이 없는 종목(종가 200개 미만): 200일선을 쓰는 항목만 200일선→50일선, 50일선→20일선으로 바꿉니다. 관심의 분할 매수 구간(20~50일선)과 차익 실현·손절 식은 그대로. 한 줄 판단 옆과 판단 근거 첫 줄에 `상장 N거래일, 50일선 기준`.\n",
+   "replacement": ""
+  },
+  {
+   "issue": 2,
+   "file": "_common.md",
+   "original": "분할 매수 구간 하단의 **반올림 전 값** − 2 × ATR(14), 결과를 마지막에 한 번만 내림.",
+   "replacement": "분할 매수 구간 하단 − 2 × ATR(14)."
+  },
+  {
+   "issue": 3,
+   "file": "_common.md",
+   "original": "- 반올림: 매수 구간 하단·차익 실현 하단·손절선은 내림, 매수 구간 상단·차익 실현 상단은 올림. 주식·ETF는 1달러(가격 100달러 미만이면 0.1달러), BTC 100달러, ETH 10달러 단위.\n",
+   "replacement": "- 반올림: 매수 구간 하단·손절선은 내림, 매수 구간 상단은 올림. 주식·ETF는 1달러(가격 100달러 미만이면 0.1달러), BTC 100달러, ETH 10달러 단위.\n"
+  },
+  {
+   "issue": "12·13",
+   "file": "_verifier.md",
+   "original": "- 수치가 맞고 출처 칸에 `(비공식 경로)` 표기만 빠졌으면 **WARNING**입니다(출처 종류가 틀린 것은 아니므로).\n",
+   "replacement": ""
+  },
+  {
+   "issue": "12·13",
+   "file": "_verifier.md",
+   "original": "- 뉴스의 최초 게재일이 7일보다 오래됐거나 행에 적힌 날짜와 다르면 **ERROR**입니다.\n",
+   "replacement": ""
+  },
+  {
+   "issue": "12·13",
+   "file": "_verifier.md",
+   "original": "## 판정 기준 보충 (2026-09-26 첫 정규 실행에서 정함)\n",
+   "replacement": ""
+  }
+ ]
+}

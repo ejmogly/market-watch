@@ -1,0 +1,84 @@
+{
+ "snapshot_at_utc": "2026-09-27T13:10:00Z",
+ "runs_total": 26,
+ "runs_log_read": 19,
+ "scheduled_runs": 9,
+ "scheduled_success": 9,
+ "start_delay_min_median": 1.2,
+ "start_delay_min_max": 9.9,
+ "duration_s_median": 506,
+ "turns_median": 40,
+ "guardrails": {
+  "push_before": [
+   8,
+   14
+  ],
+  "push_after": [
+   0,
+   5
+  ],
+  "company_email_before": [
+   3,
+   13
+  ],
+  "company_email_after": [
+   0,
+   4
+  ],
+  "agent_before": [
+   3,
+   18
+  ],
+  "agent_after": [
+   0,
+   1
+  ]
+ },
+ "by_routine": {
+  "stock-desk": {
+   "runs": 2,
+   "success": 1,
+   "median_duration_s": 628
+  },
+  "crypto-desk": {
+   "runs": 3,
+   "success": 2,
+   "median_duration_s": 494.0
+  },
+  "etf-desk": {
+   "runs": 2,
+   "success": 1,
+   "median_duration_s": 624
+  },
+  "market-verifier": {
+   "runs": 4,
+   "success": 3,
+   "median_duration_s": 592
+  },
+  "kr-desk": {
+   "runs": 1,
+   "success": 1,
+   "median_duration_s": 738
+  },
+  "weekly-brief": {
+   "runs": 3,
+   "success": 3,
+   "median_duration_s": 456
+  },
+  "kr-verifier": {
+   "runs": 1,
+   "success": 1,
+   "median_duration_s": 668
+  },
+  "event-desk": {
+   "runs": 5,
+   "success": 5,
+   "median_duration_s": 498
+  },
+  "stocknews-refresh": {
+   "runs": 5,
+   "success": 2,
+   "median_duration_s": 219.5
+  }
+ }
+}

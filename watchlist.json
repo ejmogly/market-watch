@@ -1,0 +1,69 @@
+{
+ "note": "관심 종목 목록. 종목을 추가·삭제할 때는 이 파일만 고치고, Notion DB '자산' 선택지에도 같은 이름을 추가한다.",
+ "assets": [
+  {
+   "asset": "TSLA",
+   "name": "테슬라",
+   "type": "주식",
+   "desk": "stock-desk"
+  },
+  {
+   "asset": "GOOGL",
+   "name": "알파벳 A",
+   "type": "주식",
+   "desk": "stock-desk"
+  },
+  {
+   "asset": "NVDA",
+   "name": "엔비디아",
+   "type": "주식",
+   "desk": "stock-desk"
+  },
+  {
+   "asset": "SpaceX",
+   "name": "스페이스X",
+   "type": "주식",
+   "desk": "stock-desk",
+   "ticker": "SPCX",
+   "exchange": "Nasdaq",
+   "memo": "2026-09-25 stock-desk 확인: Nasdaq SPCX, 2026-06-12 상장(공모가 135달러). 근거 SEC 424(b)(4) 투자설명서, NBC News 2026-06-12 기사, stockanalysis.com·Yahoo Finance 시세 페이지 일치"
+  },
+  {
+   "asset": "AAPL",
+   "name": "애플",
+   "type": "주식",
+   "desk": "stock-desk",
+   "memo": "2026-09-26 이벤트 데스크 도입과 함께 추가"
+  },
+  {
+   "asset": "VOO",
+   "name": "Vanguard S&P 500 ETF",
+   "type": "ETF",
+   "desk": "etf-desk"
+  },
+  {
+   "asset": "SMH",
+   "name": "VanEck Semiconductor ETF",
+   "type": "ETF",
+   "desk": "etf-desk"
+  },
+  {
+   "asset": "QQQM",
+   "name": "Invesco NASDAQ 100 ETF",
+   "type": "ETF",
+   "desk": "etf-desk"
+  },
+  {
+   "asset": "BTC",
+   "name": "비트코인",
+   "type": "크립토",
+   "desk": "crypto-desk"
+  },
+  {
+   "asset": "ETH",
+   "name": "이더리움",
+   "type": "크립토",
+   "desk": "crypto-desk"
+  }
+ ]
+}

@@ -1,0 +1,82 @@
+[
+ {
+  "id": "H01",
+  "asset": "GOOGL",
+  "expected": "ERROR",
+  "fault_type": "차익 실현 상단 반올림 방향 오류(내림)",
+  "group": "target",
+  "target_rule": "rule9",
+  "issue_no": null,
+  "note": "상단 429.46를 내림 → 429 (옳은 값 430)"
+ },
+ {
+  "id": "H02",
+  "asset": "SpaceX",
+  "expected": "PASS",
+  "fault_type": "정상",
+  "group": "normal",
+  "target_rule": null,
+  "issue_no": null,
+  "note": ""
+ },
+ {
+  "id": "H03",
+  "asset": "QQQM",
+  "expected": "ERROR",
+  "fault_type": "고지 문구를 다른 문장으로 바꿈",
+  "group": "target",
+  "target_rule": "rule6",
+  "issue_no": null,
+  "note": "고정 문구 대신 '참고용 정보이며 투자 판단은 본인의 몫입니다.'"
+ },
+ {
+  "id": "H04",
+  "asset": "VOO",
+  "expected": "ERROR",
+  "fault_type": "52주 위치 수치 불일치",
+  "group": "control",
+  "target_rule": null,
+  "issue_no": null,
+  "note": "옳은 값 93.2%, 행 값 84.2%"
+ },
+ {
+  "id": "H05",
+  "asset": "ETH",
+  "expected": "PASS",
+  "fault_type": "정상",
+  "group": "normal",
+  "target_rule": null,
+  "issue_no": null,
+  "note": ""
+ },
+ {
+  "id": "H06",
+  "asset": "NVDA",
+  "expected": "WARNING",
+  "fault_type": "출처 칸 기사 제목 말줄임",
+  "group": "target",
+  "target_rule": "rule7",
+  "issue_no": null,
+  "note": "원문 'Why Nvidia stock is down around 2% after a six-day rally' → 'Why Nvidia stock is…'"
+ },
+ {
+  "id": "H07",
+  "asset": "TSLA",
+  "expected": "ERROR",
+  "fault_type": "뉴스 인용 문장에 (확인) 태그",
+  "group": "control",
+  "target_rule": null,
+  "issue_no": null,
+  "note": "기사 인용은 (보도)"
+ },
+ {
+  "id": "H08",
+  "asset": "BTC",
+  "expected": "WARNING",
+  "fault_type": "'쉽게 말하면' 칸에 그 행의 52주 위치 값",
+  "group": "target",
+  "target_rule": "rule8",
+  "issue_no": null,
+  "note": "52주 위치 행 설명 칸에 값"
+ }
+]

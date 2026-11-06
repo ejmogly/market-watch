@@ -1,0 +1,35 @@
+{
+ "source": "Notion Events DB (database <NOTION_ID>, data source collection://<NOTION_ID>)",
+ "view_url": "https://app.notion.com/p/<NOTION_ID>?v=<NOTION_ID>",
+ "view": "[루틴] Events 전체, 일자순",
+ "read_mode": "notion-query-data-sources view 모드(읽기 전용), page_size 100, has_more=false",
+ "read_at": "2026-09-27 21:47 KST",
+ "rows": 52,
+ "fields_kept": [
+  "제목",
+  "종류",
+  "자산",
+  "시장",
+  "일자",
+  "발표 시점",
+  "상태",
+  "기준 지수",
+  "기준가 날짜",
+  "기준 종가",
+  "D+1 수익률(%)",
+  "D+5 수익률(%)",
+  "D+1 초과(%p)",
+  "D+5 초과(%p)",
+  "검증",
+  "url"
+ ],
+ "fields_dropped": [
+  "날짜 출처",
+  "실제치",
+  "예상치",
+  "검증 메모",
+  "D-1 브리핑",
+  "본문(거시 행의 자산별 반응 표 포함)"
+ ],
+ "note": "계산에 쓰지 않는 긴 텍스트 칸은 뺐다. 각 행의 url로 원본을 추적한다. 빈 칸은 DB에 값이 없다는 뜻(null)."
+}

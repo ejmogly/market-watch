@@ -1,0 +1,182 @@
+{
+ "note": "사례 페이지에 쓰는 값 중 metrics/ 스크립트가 만들지 않는 것. 출처를 각 항목에 적는다.",
+ "eval": {
+  "source": "eval/REPORT.md (Rerun, 2026-09-27 22:49 KST, claude-sonnet-5, 60 calls, 2.91 USD)",
+  "headline": "결함을 심은 시험 행으로 검증 담당을 채점하고, 놓친 유형만 겨냥해 규칙을 고친 뒤 다시 쟀습니다. 같은 세트에서 66.7% → 91.7%, 규칙을 고친 뒤 새로 만든 처음 보는 행(holdout)에서 33.3% → 66.7%였고, 정상 행 오탐은 0건을 유지했습니다.",
+  "rows": [
+   {
+    "variant": "ablated · 이슈 규칙 17문장 제거",
+    "variant_en": "incident rules removed",
+    "recall": "50.0% (6/12)",
+    "fpr": "25% (2/8)",
+    "sev": "60% (12/20)"
+   },
+   {
+    "variant": "full · 1차 규칙",
+    "variant_en": "v1 rules",
+    "recall": "66.7% (8/12)",
+    "fpr": "0% (0/8)",
+    "sev": "80% (16/20)"
+   },
+   {
+    "variant": "v2 · 검증 항목 4개 추가",
+    "variant_en": "v2 · +4 checks",
+    "recall": "91.7% (11/12)",
+    "fpr": "0% (0/8)",
+    "sev": "95% (19/20)"
+   }
+  ],
+  "note": "holdout(8행)은 규칙을 고친 뒤 새로 만든 행입니다. 같은 세트 점수(91.7%)보다 낮은 holdout 점수(66.7%)가 일반화된 개선 폭입니다. 기사 제목 대조는 규칙을 넣어도 두 세트에서 모두 놓쳐, 프롬프트가 아니라 스크립트(문자열 비교)로 옮길 항목으로 분류했습니다. n=20+8이라 결함 1건이 8~17%p입니다. 호출 96회, 4.99달러.",
+  "headline_en": "The verifier was graded on rows with planted defects, the rules were patched only for the misses, and it was graded again. Same set: 66.7% → 91.7%. Fresh holdout rows written after the patch: 33.3% → 66.7%. False alarms on clean rows stayed at zero.",
+  "note_en": "The holdout (8 rows) was written after the patch; its score (66.7%) — lower than the same-set 91.7% — is the generalizable gain. Headline matching was missed on both sets even with the new rule, so it moves from prompt to script (string comparison). n=20+8, so one defect is 8–17 pp. 96 calls, $4.99.",
+  "holdout": {
+   "rows": [
+    {
+     "variant": "full · 1차 규칙",
+     "variant_en": "v1 rules",
+     "recall": "33.3% (2/6)",
+     "target": "1/4",
+     "fpr": "0% (0/2)"
+    },
+    {
+     "variant": "v2 · 검증 항목 4개 추가",
+     "variant_en": "v2 · +4 checks",
+     "recall": "66.7% (4/6)",
+     "target": "3/4",
+     "fpr": "0% (0/2)"
+    }
+   ]
+  }
+ },
+ "issues": {
+  "source": "metrics/issues_summary.md (Team, 2026-09-27 21:51 KST)",
+  "summary": "두 프로젝트의 이슈 47건(2026-09-24~27)을 유형·발견자·재발로 분류했습니다. 발견자가 확인된 33건 중 18건(55%)을 검증 담당이 먼저 잡았습니다. 재발을 판단할 수 있는 33건 중 13건(39%)은 규칙을 적은 뒤에도 다시 나왔고, 그 13건 중 12건은 검증 담당과 독립 검토의 재계산·대조에서 드러났습니다. 규칙은 오류를 줄이고, 다시 계산하고 대조하는 검증이 남은 오류를 잡는 구조입니다. 계산식 이슈는 고친 뒤 재발이 확인되지 않았습니다(판단 가능 3건 중 0건).",
+  "summary_en": "47 issues across two projects (2026-09-24~27), classified by type, finder and recurrence. Of the 33 with a known finder, the verifier caught 18 (55%) first. Of the 33 where recurrence can be judged, 13 (39%) came back even after a rule was written — and 12 of those 13 were exposed by the verifier's recomputation and cross-checks. Rules reduce errors; a verifier that recomputes catches what remains."
+ },
+ "incidents": [
+  {
+   "no": "12·13",
+   "what": "주식 4행 출처 칸에 (비공식 경로) 표기 누락, GOOGL 뉴스를 검색일(9/21)로 적음 — 실제 게재 8/19",
+   "caught": "검증 담당(예약 실행)",
+   "fix": "표기 대상·원문 최초 게재일 규칙을 프롬프트에 추가, 누락은 WARNING·7일 초과는 ERROR",
+   "after": "다음 날 행 PASS",
+   "state": "ok",
+   "what_en": "Stock rows missed the '(unofficial path)' source note; GOOGL news dated by search date (9/21) — actually published 8/19",
+   "caught_en": "Verifier (scheduled run)",
+   "fix_en": "Added source-note and first-publication-date rules; missing note = WARNING, news older than 7 days = ERROR",
+   "after_en": "next-day rows PASS"
+  },
+  {
+   "no": "브리핑",
+   "what": "주간 브리핑이 BTC·ETH 기간 수익률을 0.00%로 계산(중복 제거 규칙 오적용)",
+   "caught": "검증 담당",
+   "fix": "브리핑 담당이 ERROR 메모를 읽고 −0.42%·+0.15%로 정정",
+   "after": "재검증 PASS",
+   "state": "ok",
+   "what_en": "Weekly brief computed BTC·ETH period return as 0.00% (dedup rule misapplied)",
+   "caught_en": "Verifier",
+   "fix_en": "Brief agent read the ERROR note and corrected to −0.42% / +0.15%",
+   "after_en": "re-verified PASS"
+  },
+  {
+   "no": "20",
+   "what": "실적 발표 시점 '미정' 13행의 기준가를 전날 종가로 잡음",
+   "caught": "총괄(사람과 함께 원자료 대조)",
+   "fix": "SEC 8-K 접수 시각(acceptanceDateTime)으로 발표 시점 결정, 자동 재측정 단계 추가",
+   "after": "13행 재측정(GOOGL 초과수익 부호 반전), 검증 34건 PASS",
+   "state": "ok",
+   "what_en": "13 earnings rows with 'unknown' timing used the prior close as base price",
+   "caught_en": "Lead session (with human, raw-data check)",
+   "fix_en": "Timing now set from SEC 8-K acceptanceDateTime; automatic re-measure step added",
+   "after_en": "13 rows re-measured (GOOGL excess flipped sign), 34 checks PASS"
+  },
+  {
+   "no": "22",
+   "what": "외부 요청 User-Agent에 회사 이메일을 지어 씀, 시키지 않은 휴대폰 알림",
+   "caught": "사용자",
+   "fix": "10개 루틴 disallowed_tools에 PushNotification, 연락처 규칙, stocknews는 외부 요청 전 연락처 검사",
+   "after": "적용 후 실행에서 0건",
+   "state": "ok",
+   "what_en": "Agent invented a company e-mail for an external API User-Agent; unrequested phone notifications",
+   "caught_en": "User",
+   "fix_en": "PushNotification blocked on all 10 routines, contact rule, pre-request contact check in stocknews",
+   "after_en": "0 after the fix"
+  },
+  {
+   "no": "23",
+   "what": "event-desk가 조사를 백그라운드 보조 에이전트에 맡기고 결과 전에 종료",
+   "caught": "총괄(실행 로그)",
+   "fix": "10개 루틴에서 Agent·ScheduleWakeup 차단, 배포 후 프롬프트 글자 대조",
+   "after": "첫 실행에서 직접 조사로 11행",
+   "state": "watch",
+   "what_en": "event-desk handed research to a background sub-agent and exited before results came back",
+   "caught_en": "Lead session (run log)",
+   "fix_en": "Agent·ScheduleWakeup blocked on all 10 routines; deployed prompts diffed against source",
+   "after_en": "first run: 11 rows researched directly"
+  },
+  {
+   "no": "15·18",
+   "what": "Notion SQL 조회가 워크스페이스 한도에 걸려 검증 실행이 우회로를 찾아 헤맴",
+   "caught": "검증 담당·Rerun 독립 검증",
+   "fix": "DB마다 루틴 전용 view를 만들고 여러 행 읽기는 view 모드만 사용",
+   "after": "이후 실행에서 한도 오류 없음",
+   "state": "ok",
+   "what_en": "Notion SQL queries hit the workspace quota; verifier runs wandered looking for workarounds",
+   "caught_en": "Verifier · independent review",
+   "fix_en": "Per-DB routine views; multi-row reads use view mode only",
+   "after_en": "no quota errors since"
+  }
+ ],
+ "roles": [
+  {
+   "tag": "AX",
+   "cls": "ax",
+   "title": "에이전트 설계·평가·가드레일",
+   "bullets": [
+    "담당·검증·요약·이벤트 역할을 나눈 클라우드 예약 루틴 10개를 설계하고, 검증 에이전트가 모든 수치를 원출처에서 다시 계산하게 해 오류를 사람보다 먼저 잡게 했다",
+    "결함을 심은 시험 행으로 검증 에이전트를 채점하고, 놓친 유형만 겨냥해 규칙을 고친 뒤 다시 쟀다: 같은 세트 66.7%→91.7%, 규칙을 고친 뒤 새로 만든 holdout 33.3%→66.7%, 오탐 0 유지. 프롬프트로 안 되는 항목(기사 제목 대조)은 스크립트로 옮길 대상으로 분리했다",
+    "실행 로그 26회를 장부로 모아 사고 3종(회사 이메일·무단 알림·보조 에이전트 위임)을 도구 차단과 프롬프트 규칙으로 막고, 적용 뒤 위반 0건을 확인했다",
+    "프롬프트를 규칙 파일에서 조립하고 배포 뒤 저장본과 글자 단위로 대조하는 절차로 손 복사 오류를 막았다"
+   ],
+   "title_en": "Agent design · evaluation · guardrails",
+   "bullets_en": [
+    "Designed 10 scheduled cloud routines split into research, verify, summarize and event roles; the verifier recomputes every number from the source so errors are caught before a human sees them",
+    "Graded the verifier on rows with planted defects, patched rules only for the misses and re-graded: same set 66.7% → 91.7%, fresh holdout 33.3% → 66.7%, zero false alarms. Checks prompts can't do reliably (headline matching) were split out for a script",
+    "Logged 26 runs into a ledger and closed three incident classes (invented e-mail, unrequested notifications, sub-agent delegation) with tool blocks and prompt rules — 0 violations after",
+    "Prompts are assembled from rule files and the deployed copy is diffed character-by-character against source"
+   ]
+  },
+  {
+   "tag": "DE",
+   "cls": "de",
+   "title": "데이터 파이프라인·품질",
+   "bullets": [
+    "원출처(Yahoo·Nasdaq·네이버·SEC) → 원자료 보존 → 계산 → Notion upsert(자산+기준 시각 멱등 키)로 이어지는 흐름과 품질 장치를 문서화했다",
+    "실적 발표 시점을 SEC 8-K 접수 시각으로 결정하도록 바꿔 13행을 재측정했고, 이벤트 반응 값을 가격 이력으로 다시 계산해 전부 일치시켰다",
+    "표준 라이브러리만으로 지표·백필·평가 스크립트를 만들어 어느 환경에서나 재현되게 했다"
+   ],
+   "title_en": "Data pipeline · quality",
+   "bullets_en": [
+    "Documented the flow source (Yahoo · Nasdaq · Naver · SEC) → raw archive → compute → Notion upsert with an idempotent asset+timestamp key",
+    "Switched earnings timing to SEC 8-K acceptance time, re-measured 13 rows, and recomputed all event reactions from price history (42/42 match)",
+    "Indicators, backfill and eval scripts use the Python standard library only, so they reproduce anywhere"
+   ]
+  },
+  {
+   "tag": "DA",
+   "cls": "da",
+   "title": "분석·인사이트",
+   "bullets": [
+    "겹치는 표본 백테스트가 만든 '규칙이 거꾸로 작동한다'는 착시를 겹치지 않는 창과 부트스트랩으로 바로잡고, 규칙이 수익이 아니라 낙폭을 줄이는 도구임을 보였다",
+    "실적 발표 반응을 평소 변동성 대비 배수로 표준화해, 전날 브리핑이 방향이 아니라 흔들림의 크기를 알리게 했다",
+    "표본 밖 성과를 2026-09-26부터 따로 쌓아 사후 점검과 섞이지 않게 했다"
+   ],
+   "title_en": "Analysis · insight",
+   "bullets_en": [
+    "Corrected an overlapping-window backtest that suggested the rule 'works backwards'; with non-overlapping windows and bootstrap CIs the rule reduces drawdown rather than adding return",
+    "Normalized earnings reactions by each asset's typical daily move, so the pre-event brief warns about size of the move, not direction",
+    "Out-of-sample tracking starts 2026-09-26 and is kept separate from the in-sample check"
+   ]
+  }
+ ]
+}

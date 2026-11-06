@@ -1,0 +1,769 @@
+<!doctype html>
+<html lang="ko" data-lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Ten AI agents research the market daily and recompute each other's numbers — eval set, run ledger, guardrails and findings.">
+<title>market-watch 사례 연구</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Noto+Sans+KR:wght@400;500;700;900&display=swap">
+<style>
+:root{--bg:#07090d;--p1:#0c1016;--p2:#121823;--line:#1c2430;--line2:#2a3442;--tx:#dde5ee;--tx2:#aeb9c6;--dim:#727f8e;
+--up:#3ee08f;--dn:#ff6161;--amb:#ffb938;--cy:#4cc9f0;--vi:#b69cff;color-scheme:dark;
+--mono:"JetBrains Mono","Noto Sans KR",ui-monospace,Menlo,monospace;--sans:"Noto Sans KR","Apple SD Gothic Neo",system-ui,sans-serif}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--tx);font:400 16px/1.75 var(--sans);padding-inline:16px;-webkit-font-smoothing:antialiased;word-break:keep-all;
+background-image:linear-gradient(rgba(42,52,66,.28) 1px,transparent 1px),linear-gradient(90deg,rgba(42,52,66,.28) 1px,transparent 1px);background-size:56px 56px}
+html:not([data-lang="en"]) .en,html[data-lang="en"] .ko{display:none!important}
+.w{max-width:1140px;margin:0 auto}
+a{color:var(--cy)}
+:focus-visible{outline:2px solid var(--cy);outline-offset:2px}
+code{font-family:var(--mono)}
+
+/* 상단 바 */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;margin-inline:-16px;background:rgba(7,9,13,.9);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line2)}
+.bar .w{display:flex;align-items:center;gap:14px;padding:10px 16px;font:500 13px var(--mono)}
+.dots{display:flex;gap:6px;flex:none}.dots i{width:11px;height:11px;border-radius:50%;background:#ff5f57}.dots i:nth-child(2){background:#febc2e}.dots i:nth-child(3){background:#28c840}
+.path{color:var(--tx2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.path b{color:var(--tx)}
+.nav{display:flex;gap:2px;margin-left:auto}
+.nav a{color:var(--tx2);text-decoration:none;padding:5px 10px;border-radius:4px;white-space:nowrap}.nav a:hover{background:var(--p2);color:var(--tx)}
+.lang{flex:none;font:700 12px var(--mono);background:var(--p2);color:var(--dim);border:1px solid var(--line2);border-radius:4px;padding:6px 10px;cursor:pointer}
+.lang:hover{border-color:var(--cy)}
+html:not([data-lang="en"]) .lang .lk,html[data-lang="en"] .lang .le{color:var(--up)}
+.live{flex:none;color:var(--up);font:700 12px var(--mono)}.live::before{content:"●";margin-right:6px;animation:bl 1.6s infinite}
+@keyframes bl{50%{opacity:.25}}
+
+/* 티커 */
+.tape{margin-inline:-16px;border-bottom:1px solid var(--line2);background:var(--p1);overflow:hidden;white-space:nowrap}
+.tape .run{display:inline-flex;gap:36px;padding:9px 0 9px 36px;animation:mq 70s linear infinite;font:500 13px var(--mono)}
+.tk{color:var(--tx2)}.tk b{color:var(--tx);margin-right:6px}
+.tk em{font-style:normal;font-size:10.5px;color:var(--dim);border:1px solid var(--line2);border-radius:3px;padding:0 5px;margin-left:8px}
+.up{color:var(--up)!important}.dn{color:var(--dn)!important}i.up,i.dn{font-style:normal}
+@keyframes mq{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@media (prefers-reduced-motion:reduce){.tape .run{animation:none}.live::before{animation:none}html{scroll-behavior:auto}}
+
+main{padding-block:64px 96px;display:grid;gap:104px}
+
+/* 공통 */
+.prompt{font:500 14px var(--mono);color:var(--up)}.prompt::before{content:"$ ";color:var(--dim)}
+h1,h2,h3{margin:0;text-wrap:balance}
+h1{font:800 clamp(34px,5.4vw,62px)/1.12 var(--mono);letter-spacing:-.035em}
+h1 .hl{color:var(--cy)}
+h2{font:800 clamp(24px,3.1vw,34px)/1.28 var(--mono);letter-spacing:-.025em}
+h3{font:700 17px/1.4 var(--sans)}
+p{margin:0;max-width:70ch;color:var(--tx2)}
+p b,li b{color:var(--tx)}
+section{display:grid;gap:24px;scroll-margin-top:110px}
+.sh{display:grid;gap:12px}
+.sh .idx{font:700 13px var(--mono);color:var(--amb);letter-spacing:.02em}
+.win{background:var(--p1);border:1px solid var(--line2);border-radius:8px;overflow:hidden;min-width:0}
+.win>.wt{display:flex;justify-content:space-between;gap:12px;padding:9px 14px;border-bottom:1px solid var(--line);font:500 12px var(--mono);color:var(--dim);background:var(--p2)}
+.win>.wt span:last-child{text-align:right}
+.win>.wb{padding:16px}
+.note{font-size:13.5px;color:var(--dim);line-height:1.7;max-width:none}
+
+/* 히어로 */
+.hero{display:grid;gap:28px}
+.lede{font-size:18px;max-width:62ch}
+.kp{display:grid;grid-template-columns:repeat(5,1fr);border:1px solid var(--line2);border-radius:8px;background:var(--p1);overflow:hidden}
+.kp>div{padding:20px 18px;border-right:1px solid var(--line);display:grid;gap:6px;align-content:start}.kp>div:last-child{border-right:0}
+.kp .v{font:800 38px/1.05 var(--mono);letter-spacing:-.04em}.kp .v small{font-size:18px;color:var(--dim);font-weight:500;letter-spacing:0}
+.kp .k{font:700 11.5px var(--mono);letter-spacing:.07em;color:var(--dim);text-transform:uppercase}
+.kp .c{font-size:13px;line-height:1.5;color:var(--tx2)}
+.c-up{color:var(--up)}.c-cy{color:var(--cy)}.c-amb{color:var(--amb)}.c-vi{color:var(--vi)}
+
+/* 스케줄 */
+.dayw{overflow-x:auto}
+.day{position:relative;height:132px;min-width:640px;margin:0 40px}
+.day .axis{position:absolute;left:0;right:0;top:64px;height:2px;background:var(--line2)}
+.day .hr{position:absolute;top:72px;font:500 11px var(--mono);color:var(--dim);transform:translateX(-50%)}
+.sm{position:absolute;top:0;transform:translateX(-50%);display:grid;justify-items:center;gap:1px;font:500 12px var(--mono);white-space:nowrap}
+.sm.lo{top:88px}
+.sm .st{font-weight:800}.sm .sn{color:var(--tx2)}
+.sm::after{content:"";position:absolute;left:50%;width:10px;height:10px;border-radius:50%;transform:translateX(-50%);top:59px;background:currentColor;box-shadow:0 0 0 3px var(--p1)}
+.sm.lo::after{top:-29px}
+.sm.ar{transform:translateX(calc(-100% + 18px));justify-items:end}.sm.ar::after{left:auto;right:13px;transform:none}
+.sm.al{transform:translateX(-18px);justify-items:start}.sm.al::after{left:13px;transform:none}
+.sm.desk{color:var(--cy)}.sm.ver{color:var(--up)}.sm.page{color:var(--vi)}.sm.event{color:var(--amb)}
+.pipe{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line2);border-radius:8px;overflow:hidden;background:var(--p1)}
+.pipe>div{padding:18px;border-right:1px solid var(--line);display:grid;gap:8px;align-content:start}.pipe>div:last-child{border-right:0}
+.pipe .pn{font:700 12px var(--mono);color:var(--dim)}.pipe h3{font:800 17px var(--mono)}
+.pipe ul{margin:0;padding-left:16px;font-size:14px;color:var(--tx2);display:grid;gap:4px;line-height:1.55}
+.pipe code{font-size:12px;color:var(--cy);background:rgba(76,201,240,.1);border-radius:3px;padding:1px 5px}
+
+/* eval */
+.ev{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:18px;align-items:start}
+.evl{display:grid;gap:18px;align-content:start;min-width:0}
+.bigq{font:500 19px/1.65 var(--sans);color:var(--tx);max-width:none}
+.evt{width:100%;border-collapse:collapse;font:500 14px var(--mono)}
+.evt th,.evt td{padding:10px;border-bottom:1px solid var(--line);text-align:left}.evt tr:last-child td{border-bottom:0}
+.evt th{color:var(--dim);font-size:11.5px;font-weight:700}
+.evt td:first-child{font-family:var(--sans);font-size:14px;color:var(--tx2)}
+.evt td.big{font-size:24px;font-weight:800}
+.grid{display:grid;gap:3px;font:500 12.5px var(--mono)}
+.gr,.gh2{display:grid;grid-template-columns:32px 66px minmax(0,1fr) 26px 26px;gap:8px;align-items:center;padding:3px 6px}
+.gr.g3,.gh2.g3{grid-template-columns:32px 66px minmax(0,1fr) 26px 26px 26px}
+.evt tr.hl td{background:rgba(76,201,240,.06)}
+.gr{border-radius:3px}.gr:hover{background:var(--p2)}
+.gh2{font:700 11px var(--mono);color:var(--dim);border-bottom:1px solid var(--line);padding-bottom:7px;margin-bottom:4px}
+.gid{color:var(--dim)}.gas{color:var(--tx)}
+.gft{color:var(--tx2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font:400 13px var(--sans)}.gft i{font:700 11.5px var(--mono);font-style:normal;color:var(--amb)}
+.gc{width:24px;height:22px;display:inline-grid;place-items:center;border-radius:3px;font-weight:800;font-size:12px}
+.gc.hit{background:rgba(62,224,143,.16);color:var(--up)}.gc.miss{background:rgba(255,97,97,.16);color:var(--dn)}
+.gc.ok{background:var(--p2);color:var(--dim)}.gc.fa{background:rgba(255,185,56,.2);color:var(--amb)}
+.leg{display:flex;flex-wrap:wrap;gap:16px;font:500 12px var(--mono);color:var(--dim);margin-top:12px}
+.leg span{display:inline-flex;align-items:center;gap:6px}.leg .gc{width:16px;height:14px;font-size:10px}
+.vl{display:grid;gap:8px}
+.vrow{display:grid;grid-template-columns:118px 1fr;gap:12px;align-items:center;font:500 12.5px var(--mono)}
+.vd{color:var(--tx2)}
+.vb{display:flex;height:26px;gap:2px}.vb span{display:grid;place-items:center;font-weight:800;color:#07090d;min-width:26px;border-radius:2px}
+.vb .p{background:var(--up)}.vb .w{background:var(--amb)}.vb .e{background:var(--dn)}
+
+/* 운영 */
+.diffs{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.df{background:var(--p1);border:1px solid var(--line2);border-radius:8px;padding:16px;font:500 14px var(--mono);display:grid;gap:5px}
+.dh{font:700 15px var(--sans);color:var(--tx);margin-bottom:6px}
+.dm,.dp{padding:3px 10px;border-radius:3px;font-size:22px;font-weight:800}
+.dm{color:var(--dn);background:rgba(255,97,97,.08)}.dp{color:var(--up);background:rgba(62,224,143,.08)}
+.dm span,.dp span{font-size:13px;font-weight:500}
+.dw{color:var(--dim);font-size:11.5px;margin-top:6px}
+.log{font:500 12.5px/1.55 var(--mono);max-height:440px;overflow:auto}
+.ll{display:grid;grid-template-columns:84px 30px 132px 50px minmax(0,1fr);gap:10px;padding:5px 2px;border-bottom:1px dashed var(--line)}
+.lt{color:var(--dim)}.lk.ok{color:var(--up)}.lk.bad{color:var(--dn)}.lk.dim{color:var(--dim)}
+.lr{color:var(--cy)}.lm{color:var(--dim);font-size:11px}.ln{color:var(--tx2);font:400 13px/1.55 var(--sans)}
+.fl{font:700 10.5px var(--mono);border-radius:3px;padding:1px 5px;margin-right:4px}
+.fl.bad{background:rgba(255,97,97,.18);color:var(--dn)}.fl.warn{background:rgba(255,185,56,.18);color:var(--amb)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.stats div{border-left:3px solid var(--vi);padding:4px 0 4px 14px;display:grid;gap:4px}
+.stats b{font:800 32px/1.1 var(--mono);color:var(--vi)}.stats span{font-size:13.5px;color:var(--tx2);line-height:1.5}
+.gitlog{display:grid}
+.gl{display:grid;grid-template-columns:70px 100px minmax(0,1fr);gap:14px;padding:16px;border-bottom:1px solid var(--line)}.gl:last-child{border-bottom:0}
+.gh{font:800 14px var(--mono);color:var(--amb)}.gt{font:700 12.5px var(--mono);color:var(--vi)}
+.gb{display:grid;gap:5px}.gw{color:var(--tx);font-weight:700;font-size:15px;max-width:none}
+.gx{font-size:14px;max-width:none}.gx>span:first-child{display:inline-block;min-width:66px;font:700 11.5px var(--mono);color:var(--dim)}
+.ga{font:700 13px var(--mono);max-width:none}.ga.ok{color:var(--up)}.ga.watch{color:var(--amb)}
+
+/* 차트 */
+.ch{overflow-x:auto}.ch svg{width:100%;min-width:560px;height:auto;display:block}
+svg .gridl{stroke:var(--line);stroke-width:1}svg .bl{stroke:var(--amb);stroke-width:1.5;stroke-dasharray:4 4}
+svg .ax{font:500 11.5px var(--mono);fill:var(--dim)}svg .lb{font:700 13px var(--mono);fill:var(--tx)}svg .nv{font:700 12px var(--mono);fill:var(--tx2)}
+svg .nv.up{fill:var(--up)}svg .nv.dn{fill:var(--dn)}
+svg .dh{fill:#5d6978}svg .dr{fill:var(--cy)}svg .sg{stroke:var(--up);stroke-width:3}svg .sb{stroke:var(--dn);stroke-width:3}svg .sf{stroke:#5d6978;stroke-width:3}
+svg .ci{fill:rgba(76,201,240,.14);stroke:var(--cy)}svg .bus{fill:var(--cy)}svg .bkr{fill:#5d6978}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
+details{border:1px solid var(--line2);border-radius:8px;background:var(--p1)}
+summary{cursor:pointer;padding:12px 16px;font:700 13px var(--mono);color:var(--tx2)}
+.tb{overflow-x:auto;padding:0 16px 12px}
+table.st{width:100%;border-collapse:collapse;font:500 13px var(--mono)}
+table.st th,table.st td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:right;color:var(--tx2)}
+table.st th:first-child,table.st td:first-child{text-align:left;color:var(--tx)}table.st th{color:var(--dim);font-size:11.5px}
+
+/* 역할 */
+.roles{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.role{background:var(--p1);border:1px solid var(--line2);border-radius:8px;padding:20px;display:grid;gap:12px;align-content:start}
+.rh{font:700 12.5px var(--mono);color:var(--up)}
+.role ul{margin:0;padding-left:18px;display:grid;gap:10px}.role li{font-size:14.5px;line-height:1.65;color:var(--tx2)}
+.lim{margin:0;padding-left:20px;display:grid;gap:6px;color:var(--tx2)}
+footer{font:500 12.5px var(--mono);color:var(--dim);border-top:1px solid var(--line2);padding-top:16px;line-height:1.7}
+
+@media (max-width:980px){
+ .kp{grid-template-columns:repeat(2,1fr)}.kp>div{border-bottom:1px solid var(--line)}
+ .ev,.two{grid-template-columns:minmax(0,1fr)}
+ .diffs,.roles{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}
+ .pipe{grid-template-columns:1fr 1fr}.pipe>div{border-bottom:1px solid var(--line)}
+ .nav{display:none}.lang{margin-left:auto}
+}
+@media (max-width:560px){
+ .kp{grid-template-columns:1fr}.pipe{grid-template-columns:1fr}.stats{grid-template-columns:1fr}
+ .gl{grid-template-columns:1fr;gap:6px}
+ .ll{grid-template-columns:78px 28px minmax(0,1fr)}.ll .lm{display:none}.ll .ln{grid-column:1/-1}
+ .path,.live{display:none}
+}
+
+/* 07 포지션 */
+.pmode{font:500 13px var(--mono);color:var(--tx2);display:flex;gap:10px;align-items:baseline}
+.pmode b{color:var(--up)}.pmode.demo b{color:var(--amb)}
+.pf{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px 16px;align-items:end}
+.pf>label{display:grid;gap:6px;font:700 11.5px var(--mono);color:var(--dim);letter-spacing:.06em;text-transform:uppercase}
+.pf input[type=date],.pf input[type=number],.pf input[type=text],.pf select{font:500 14px var(--mono);color:var(--tx);background:var(--bg);border:1px solid var(--line2);border-radius:4px;padding:8px 10px;width:100%;min-width:0;height:40px}
+.pf input:focus,.pf select:focus{border-color:var(--cy);outline:none}
+.pf input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.8)}
+.pf .side{display:grid;gap:6px;min-width:0}
+.pf .side .lbl{font:700 11.5px var(--mono);color:var(--dim);letter-spacing:.06em;text-transform:uppercase}
+.seg{display:grid;grid-template-columns:1fr 1fr;height:40px}
+.seg button{font:700 13px var(--mono);border:1px solid var(--line2);color:var(--dim);background:var(--bg);cursor:pointer}
+.seg button:first-child{border-radius:4px 0 0 4px}.seg button:last-child{border-radius:0 4px 4px 0;border-left:0}
+.seg button[aria-pressed=true][data-side=buy]{color:#04130b;background:var(--up);border-color:var(--up)}
+.seg button[aria-pressed=true][data-side=sell]{color:#1a0505;background:var(--dn);border-color:var(--dn)}
+.pf .act{grid-column:span 4;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.btn{font:700 13px var(--mono);background:var(--cy);color:#04121a;border:0;border-radius:4px;padding:10px 18px;cursor:pointer}
+.btn:hover{filter:brightness(1.1)}
+.pmsg{font:500 13px var(--mono);color:var(--tx2)}.pmsg.err{color:var(--dn)}.pmsg.ok{color:var(--up)}
+.pk{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.pk>div{border:1px solid var(--line2);border-radius:8px;background:var(--p1);padding:16px 18px;display:grid;gap:10px;align-content:start}
+.pk .cur{font:700 12px var(--mono);color:var(--amb);letter-spacing:.06em}
+.pk .tot{font:800 28px/1.1 var(--mono);letter-spacing:-.03em}.pk .tot small{font-size:15px;font-weight:600;letter-spacing:0}
+.pk dl{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0;font:500 13.5px var(--mono)}
+.pk dt{color:var(--dim);font-family:var(--sans)}.pk dd{margin:0;text-align:right;color:var(--tx2);font-variant-numeric:tabular-nums}
+#ptab,#ttab{font-variant-numeric:tabular-nums;white-space:nowrap}
+table.st td.l,table.st th.l{text-align:left}
+table.st td.memo{white-space:normal;min-width:140px;color:var(--dim)}
+table.st tr.bad td{color:var(--dn)}
+.bd{font:600 10px var(--mono);border:1px solid var(--line2);border-radius:3px;padding:0 4px;color:var(--amb);margin-left:6px;vertical-align:1px}
+.sub{font-style:normal;font-size:11px;color:var(--dim);margin-left:4px}.sub.amb,.amb{color:var(--amb)}.dim{color:var(--dim)}
+.rl{font:600 11px var(--mono);border:1px solid currentColor;border-radius:3px;padding:0 5px}.rl.up{color:var(--up)}.rl.amb{color:var(--amb)}.rl.dn{color:var(--dn)}
+.xb{font:600 11.5px var(--mono);background:none;border:1px solid var(--line2);color:var(--dim);border-radius:3px;padding:2px 8px;cursor:pointer}
+.xb:hover{border-color:var(--tx2);color:var(--tx2)}.xb.arm{color:var(--dn);border-color:var(--dn)}
+.win details.ovr-d{border:0;border-top:1px solid var(--line);border-radius:0;background:none;padding:0 0 4px}
+.ovr-d summary{font:500 12.5px var(--mono)}
+.ovr-d .ovr{padding:0 16px 12px;margin-top:0}
+.ovr{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-top:12px}
+.ovr label{display:grid;gap:5px;font:700 11px var(--mono);color:var(--dim)}
+.ovr input{font:500 13px var(--mono);color:var(--tx);background:var(--bg);border:1px solid var(--line2);border-radius:4px;padding:7px 9px;width:100%;min-width:0}
+@media (max-width:760px){.pf{grid-template-columns:repeat(2,minmax(0,1fr))}.pf .act{grid-column:span 2}}
+main>section,#pos>*{min-width:0}
+.pk .kr{border-color:rgba(76,201,240,.45)}.pk .kr .cur{color:var(--cy)}
+.pk .fxn{font-size:12px;line-height:1.55;color:var(--dim);max-width:none}
+.sub.blk{display:block;margin:0}
+.ins{border:1px solid rgba(76,201,240,.45);border-radius:8px;background:var(--p1);padding:16px 18px;display:grid;gap:12px}
+.ins .ih{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 14px;align-items:baseline}
+.ins .cur{font:700 12px var(--mono);color:var(--cy);letter-spacing:.06em}
+.ins ul{list-style:none;margin:0;padding:0;display:grid;gap:9px}
+.ins li{display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px;align-items:baseline;font-size:14.5px;line-height:1.65;color:var(--tx2)}
+.ins .il{font:700 11.5px var(--mono);color:var(--amb);letter-spacing:.04em}
+.ins .ix b{font-family:var(--mono);font-weight:700;color:var(--tx)}.ins .ix b.up{color:var(--up)}.ins .ix b.dn{color:var(--dn)}
+.ins .ix .sub{display:inline;margin-left:6px}
+@media (max-width:560px){.ins li{grid-template-columns:minmax(0,1fr);gap:2px}}
+
+</style>
+</head>
+<body>
+<div class="bar"><div class="w">
+<span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+<span class="path">~/<b>market-watch</b> — case-study</span>
+<nav class="nav" aria-label="sections"><a href="#arch"><span class="ko">구조</span><span class="en">arch</span></a><a href="#eval">eval</a><a href="#ops"><span class="ko">운영</span><span class="en">ops</span></a><a href="#find"><span class="ko">발견</span><span class="en">findings</span></a><a href="#roles"><span class="ko">한 일</span><span class="en">role</span></a><a href="#pos"><span class="ko">포지션</span><span class="en">positions</span></a></nav>
+<button class="lang" id="lang" type="button" aria-label="Switch language"><span class="lk">KO</span> / <span class="le">EN</span></button>
+<span class="live">SNAP 2026-09-27</span>
+</div></div>
+<div class="tape" aria-label="watchlist ticker"><div class="run"><span class="tk"><b>TSLA</b> 343.69 <i class="dn">-10.77%</i><em>REDUCE</em></span><span class="tk"><b>GOOGL</b> 282.57 <i class="dn">-2.20%</i><em>REDUCE</em></span><span class="tk"><b>NVDA</b> 181.60 <i class="dn">-9.26%</i><em>HOLD</em></span><span class="tk"><b>SpaceX</b> 123.62 <i class="dn">-9.05%</i><em>REDUCE</em></span><span class="tk"><b>AAPL</b> 344.17 <i class="dn">-1.53%</i><em>WATCH</em></span><span class="tk"><b>VOO</b> 673.97 <i class="dn">-4.37%</i><em>WATCH</em></span><span class="tk"><b>SMH</b> 447.73 <i class="dn">-11.21%</i><em>HOLD</em></span><span class="tk"><b>QQQM</b> 266.85 <i class="dn">-6.34%</i><em>HOLD</em></span><span class="tk"><b>BTC</b> 80,405 <i class="up">+3.96%</i><em>WATCH</em></span><span class="tk"><b>ETH</b> 2,422.31 <i class="up">+6.58%</i><em>WATCH</em></span><span class="tk"><b>삼성전자</b> 201,500 <i class="dn">-9.03%</i><em>HOLD</em></span><span class="tk"><b>SK하이닉스</b> 1,262,000 <i class="dn">-11.13%</i><em>HOLD</em></span><span class="tk"><b>현대차</b> 293,000 <i class="up">+1.91%</i><em>REDUCE</em></span><span class="tk"><b>두산에너빌리티</b> 49,000 <i class="dn">-7.72%</i><em>REDUCE</em></span><span class="tk"><b>TSLA</b> 343.69 <i class="dn">-10.77%</i><em>REDUCE</em></span><span class="tk"><b>GOOGL</b> 282.57 <i class="dn">-2.20%</i><em>REDUCE</em></span><span class="tk"><b>NVDA</b> 181.60 <i class="dn">-9.26%</i><em>HOLD</em></span><span class="tk"><b>SpaceX</b> 123.62 <i class="dn">-9.05%</i><em>REDUCE</em></span><span class="tk"><b>AAPL</b> 344.17 <i class="dn">-1.53%</i><em>WATCH</em></span><span class="tk"><b>VOO</b> 673.97 <i class="dn">-4.37%</i><em>WATCH</em></span><span class="tk"><b>SMH</b> 447.73 <i class="dn">-11.21%</i><em>HOLD</em></span><span class="tk"><b>QQQM</b> 266.85 <i class="dn">-6.34%</i><em>HOLD</em></span><span class="tk"><b>BTC</b> 80,405 <i class="up">+3.96%</i><em>WATCH</em></span><span class="tk"><b>ETH</b> 2,422.31 <i class="up">+6.58%</i><em>WATCH</em></span><span class="tk"><b>삼성전자</b> 201,500 <i class="dn">-9.03%</i><em>HOLD</em></span><span class="tk"><b>SK하이닉스</b> 1,262,000 <i class="dn">-11.13%</i><em>HOLD</em></span><span class="tk"><b>현대차</b> 293,000 <i class="up">+1.91%</i><em>REDUCE</em></span><span class="tk"><b>두산에너빌리티</b> 49,000 <i class="dn">-7.72%</i><em>REDUCE</em></span></div></div>
+<main class="w">
+<header class="hero">
+  <div class="prompt">cat README --lang=<span class="ko">ko</span><span class="en">en</span></div>
+  <h1><span class="ko">AI 에이전트 10개가<br>매일 시장을 조사하고,<br><span class="hl">서로의 숫자를 다시 계산한다.</span></span><span class="en">Ten AI agents research<br>the market every morning<br><span class="hl">and recompute each other's numbers.</span></span></h1>
+  <p class="lede"><span class="ko">관심 종목 14개를 클라우드 예약 루틴 10개가 <b>조사 → 검증 → 요약</b>해 Notion에 쌓습니다. 이 페이지는 돌아간다는 사실보다 <b>무엇을 재어 봤고, 무엇을 발견했는지</b>를 보여 줍니다.</span><span class="en">Ten scheduled cloud routines <b>research → verify → summarize</b> 14 assets into Notion. This page is less about the fact that it runs and more about <b>what was measured and what turned up</b>.</span></p>
+  <div class="kp">
+    <div><span class="k"><span class="ko">검증 검출률</span><span class="en">verifier recall</span></span><span class="v c-cy">91.7%</span><span class="c"><span class="ko">처음 보는 행 66.7% · 오탐 0</span><span class="en">unseen rows 66.7% · 0 false alarms</span></span></div>
+    <div><span class="k"><span class="ko">예약 실행</span><span class="en">scheduled runs</span></span><span class="v c-up">9<small>/9</small></span><span class="c"><span class="ko">시작 지연 중앙값 1.2분</span><span class="en">median start delay 1.2 min</span></span></div>
+    <div><span class="k"><span class="ko">가드레일 뒤 위반</span><span class="en">violations after fix</span></span><span class="v c-up">0</span><span class="c"><span class="ko">적용 전 14건</span><span class="en">14 before</span></span></div>
+    <div><span class="k"><span class="ko">낙폭 줄인 자산</span><span class="en">lower drawdown</span></span><span class="v c-amb">11<small>/13</small></span><span class="c"><span class="ko">수익 우위는 2/13</span><span class="en">higher return only 2/13</span></span></div>
+    <div><span class="k"><span class="ko">재계산 일치</span><span class="en">recomputed match</span></span><span class="v c-vi">42<small>/42</small></span><span class="c"><span class="ko">이벤트 반응 행</span><span class="en">event reaction rows</span></span></div>
+  </div>
+  <p class="note"><span class="ko">스냅숏 2026-09-27 · 운영 데이터 이틀치 초기값 · 2026-10-25 갱신 예정 · 투자 권유 아님</span><span class="en">snapshot 2026-09-27 · two days of ops data, early numbers · refresh 2026-10-25 · not investment advice</span></p>
+</header>
+
+<section id="arch">
+  <div class="sh"><span class="idx">01 / <span class="ko">구조</span><span class="en">architecture</span></span><h2><span class="ko">하루 여섯 번, 사람 없이 돕니다</span><span class="en">Six runs a day, no human in the loop</span></h2>
+  <p><span class="ko">담당은 원출처에서 값을 모으고, 검증은 담당이 쓴 숫자를 믿지 않고 <b>원출처에서 다시 받아 다시 계산</b>합니다. 규칙은 버전 관리되는 프롬프트 파일에 있고, 배포한 뒤 저장본을 원본과 글자 단위로 대조합니다.</span><span class="en">Desks collect values from the source. The verifier doesn't trust them — it <b>refetches and recomputes</b>. Rules live in versioned prompt files, and the deployed prompt is diffed character-by-character against source.</span></p></div>
+  <div class="win"><div class="wt"><span>crontab · KST</span><span>00:00 ─ 24:00</span></div><div class="wb">
+    <div class="dayw"><div class="day"><div class="axis"></div><span class="hr" style="left:0.00%">00</span><span class="hr" style="left:12.50%">03</span><span class="hr" style="left:25.00%">06</span><span class="hr" style="left:37.50%">09</span><span class="hr" style="left:50.00%">12</span><span class="hr" style="left:62.50%">15</span><span class="hr" style="left:75.00%">18</span><span class="hr" style="left:87.50%">21</span><span class="hr" style="left:100.00%">24</span><div class="sm desk  ar" style="left:29.17%"><span class="st">07:00</span><span class="sn">stock · etf · crypto</span></div><div class="sm ver lo " style="left:31.94%"><span class="st">07:40</span><span class="sn">market-verifier</span></div><div class="sm page  al" style="left:34.03%"><span class="st">08:10</span><span class="sn">stocknews</span></div><div class="sm event  ar" style="left:79.17%"><span class="st">19:00</span><span class="sn">event-desk</span></div><div class="sm desk lo " style="left:85.42%"><span class="st">20:30</span><span class="sn">kr-desk</span></div><div class="sm ver  al" style="left:88.19%"><span class="st">21:10</span><span class="sn">kr-verifier</span></div></div></div>
+    <p class="note"><span class="ko">+ 토 09:30 주간 브리핑(Opus) · 매월 1일 09:30 월간 브리핑 · 다음 날 07:40 검증 담당이 브리핑 숫자를 다시 계산</span><span class="en">+ Sat 09:30 weekly brief (Opus) · 1st of month 09:30 monthly brief · verified next morning at 07:40</span></p>
+  </div></div>
+  <div class="pipe">
+    <div><span class="pn">[1] research</span><h3><span class="ko">조사</span><span class="en">Research</span></h3><ul><li><code>stock</code> <code>etf</code> <code>crypto</code> · <span class="ko">해외 10종목</span><span class="en">10 global assets</span></li><li><code>kr-desk</code> · <span class="ko">국내 4종목</span><span class="en">4 Korean stocks</span></li><li><span class="ko">종목당 한 행, 출처·조회 시각 필수</span><span class="en">one row per asset, source + fetch time</span></li></ul></div>
+    <div><span class="pn">[2] verify</span><h3><span class="ko">검증</span><span class="en">Verify</span></h3><ul><li><span class="ko">가격·이동평균·ATR 재계산</span><span class="en">recompute price · MA · ATR</span></li><li><span class="ko">태그·뉴스 게재일·판단 규칙 대조</span><span class="en">check tags · news dates · rule</span></li><li>PASS · WARNING · ERROR</li></ul></div>
+    <div><span class="pn">[3] summarize</span><h3><span class="ko">요약</span><span class="en">Summarize</span></h3><ul><li><span class="ko">일간·주간·월간 브리핑</span><span class="en">daily · weekly · monthly briefs</span></li><li><span class="ko">가치 지표 리포트, 검산 5종</span><span class="en">valuation report, 5 self-checks</span></li><li><span class="ko">다음 날 다시 검증</span><span class="en">re-verified next day</span></li></ul></div>
+    <div><span class="pn">[4] events</span><h3><span class="ko">이벤트</span><span class="en">Events</span></h3><ul><li><span class="ko">실적·FOMC·CPI·고용 달력</span><span class="en">earnings · FOMC · CPI · jobs</span></li><li><span class="ko">발표 시점 = SEC 8-K 접수 시각</span><span class="en">timing = SEC 8-K acceptance</span></li><li><span class="ko">D+1·D+5 반응 측정</span><span class="en">D+1 · D+5 reaction</span></li></ul></div>
+  </div>
+</section>
+
+<section id="eval">
+  <div class="sh"><span class="idx">02 / eval</span><h2><span class="ko">검증 담당은 오류를 얼마나 잡나</span><span class="en">How much does the verifier actually catch?</span></h2></div>
+  <div class="ev">
+    <div class="evl">
+      <p class="bigq"><span class="ko">결함을 심은 시험 행으로 검증 담당을 채점하고, 놓친 유형만 겨냥해 규칙을 고친 뒤 다시 쟀습니다. 같은 세트에서 66.7% → 91.7%, 규칙을 고친 뒤 새로 만든 처음 보는 행(holdout)에서 33.3% → 66.7%였고, 정상 행 오탐은 0건을 유지했습니다.</span><span class="en">The verifier was graded on rows with planted defects, the rules were patched only for the misses, and it was graded again. Same set: 66.7% → 91.7%. Fresh holdout rows written after the patch: 33.3% → 66.7%. False alarms on clean rows stayed at zero.</span></p>
+      <div class="win"><div class="wt"><span>eval/REPORT.md · F01–F20</span><span>claude-sonnet-5 · 96 calls · $4.99</span></div><div class="wb">
+      <table class="evt"><thead><tr><th><span class="ko">판본</span><span class="en">variant</span></th><th><span class="ko">검출률</span><span class="en">recall</span></th><th><span class="ko">오탐</span><span class="en">false alarm</span></th><th><span class="ko">일치</span><span class="en">severity</span></th></tr></thead><tbody><tr class=""><td><span class="ko">ablated · 이슈 규칙 17문장 제거</span><span class="en">incident rules removed</span></td><td class="big ">50.0%</td><td class="big dn">25%</td><td>60%</td></tr><tr class=""><td><span class="ko">full · 1차 규칙</span><span class="en">v1 rules</span></td><td class="big ">66.7%</td><td class="big c-up">0%</td><td>80%</td></tr><tr class="hl"><td><span class="ko">v2 · 검증 항목 4개 추가</span><span class="en">v2 · +4 checks</span></td><td class="big c-cy">91.7%</td><td class="big c-up">0%</td><td>95%</td></tr></tbody></table></div></div>
+      <div class="win"><div class="wt"><span>holdout H01–H08 · <span class="ko">규칙을 고친 뒤 새로 만든 행</span><span class="en">written after the patch</span></span><span><span class="ko">과적합 점검</span><span class="en">overfit check</span></span></div><div class="wb">
+      <table class="evt"><thead><tr><th><span class="ko">판본</span><span class="en">variant</span></th><th><span class="ko">검출률</span><span class="en">recall</span></th><th><span class="ko">겨냥 유형</span><span class="en">targeted</span></th><th><span class="ko">오탐</span><span class="en">false alarm</span></th></tr></thead><tbody><tr class=""><td><span class="ko">full · 1차 규칙</span><span class="en">v1 rules</span></td><td class="big ">33.3%</td><td>1/4</td><td class="big c-up">0%</td></tr><tr class="hl"><td><span class="ko">v2 · 검증 항목 4개 추가</span><span class="en">v2 · +4 checks</span></td><td class="big c-cy">66.7%</td><td>3/4</td><td class="big c-up">0%</td></tr></tbody></table></div></div>
+      <p class="note"><span class="ko">holdout(8행)은 규칙을 고친 뒤 새로 만든 행입니다. 같은 세트 점수(91.7%)보다 낮은 holdout 점수(66.7%)가 일반화된 개선 폭입니다. 기사 제목 대조는 규칙을 넣어도 두 세트에서 모두 놓쳐, 프롬프트가 아니라 스크립트(문자열 비교)로 옮길 항목으로 분류했습니다. n=20+8이라 결함 1건이 8~17%p입니다. 호출 96회, 4.99달러.</span><span class="en">The holdout (8 rows) was written after the patch; its score (66.7%) — lower than the same-set 91.7% — is the generalizable gain. Headline matching was missed on both sets even with the new rule, so it moves from prompt to script (string comparison). n=20+8, so one defect is 8–17 pp. 96 calls, $4.99.</span></p>
+    </div>
+    <div class="win"><div class="wt"><span>F01–F20 · H01–H08</span><span>A = ablated · 1 = v1 · 2 = v2</span></div><div class="wb">
+      <div class="gh2 g3"><span>id</span><span>asset</span><span><span class="ko">심은 결함</span><span class="en">planted defect</span></span><span>A</span><span>1</span><span>2</span></div>
+      <div class="grid"><div class="gr g3"><span class="gid">F01</span><span class="gas">GOOGL</span><span class="gft">뉴스 날짜를 검색 결과 날짜로 적음(원문 게재 7일 초과) <i>#13</i></span><span class="gc hit" title="abl: ERROR">●</span><span class="gc hit" title="full: ERROR">●</span><span class="gc hit" title="v2: ERROR">●</span></div><div class="gr g3"><span class="gid">F02</span><span class="gas">VOO</span><span class="gft"><span class="ko">정상 행</span><span class="en">clean row</span></span><span class="gc ok" title="abl: PASS">✓</span><span class="gc ok" title="full: PASS">✓</span><span class="gc ok" title="v2: PASS">✓</span></div><div class="gr g3"><span class="gid">F03</span><span class="gas">SMH</span><span class="gft">이동평균 수치 불일치</span><span class="gc hit" title="abl: ERROR">●</span><span class="gc hit" title="full: ERROR">●</span><span class="gc hit" title="v2: ERROR">●</span></div><div class="gr g3"><span class="gid">F04</span><span class="gas">GOOGL</span><span class="gft"><span class="ko">정상 행</span><span class="en">clean row</span></span><span class="gc fa" title="abl: WARNING">!</span><span class="gc ok" title="full: PASS">✓</span><span class="gc ok" title="v2: PASS">✓</span></div><div class="gr g3"><span class="gid">F05</span><span class="gas">ETH</span><span class="gft">고지 문구 누락</span><span class="gc miss" title="abl: PASS">○</span><span class="gc miss" title="full: PASS">○</span><span class="gc hit" title="v2: ERROR">●</span></div><div class="gr g3"><span class="gid">F06</span><span class="gas">QQQM</span><span class="gft"><span class="ko">정상 행</span><span class="en">clean row</span></span><span class="gc ok" title="abl: PASS">✓</span><span class="gc ok" title="full: PASS">✓</span><span class="gc ok" title="v2: PASS">✓</span></div><div class="gr g3"><span class="gid">F07</span><span class="gas">TSLA</span><span class="gft">출처 칸 기사 제목 축약 <i>#10</i></span><span class="gc miss" title="abl: PASS">○</span><span class="gc miss" title="full: PASS">○</span><span class="gc miss" title="v2: PASS">○</span></div><div class="gr g3"><span class="gid">F08</span><span class="gas">SpaceX</span><span class="gft"><span class="ko">정상 행</span><span class="en">clean row</span></span><span class="gc fa" title="abl: ERROR">!</span><span class="gc ok" title="full: PASS">✓</span><span class="gc ok" title="v2: PASS">✓</span></div><div class="gr g3"><span class="gid">F09</span><span class="gas">VOO</span><span class="gft">손절선을 반올림 후 하단으로 계산 <i>#2</i></span><span class="gc miss" title="abl: PASS">○</span><span class="gc hit" title="full: ERROR">●</span><span class="gc hit" title="v2: ERROR">●</span></div><div class="gr g3"><span class="gid">F10</span><span class="gas">SMH</span><span class="gft"><span class="ko">정상 행</span><span class="en">clean row</span></span><span class="gc ok" title="abl: PASS">✓</span><span class="gc ok" title="full: PASS">✓</span><span class="gc ok" title="v2: PASS">✓</span></div><div class="gr g3"><span class="gid">F11</span><span class="gas">TSLA</span><span class="gft">한 줄 판단 라벨 규칙 위반</span><span class="gc hit" title="abl: ERROR">●</span><span class="gc hit" title="full: ERROR">●</span><span class="gc hit" title="v2: ERROR">●</span></div><div class="gr g3"><span class="gid">F12</span><span class="gas">NVDA</span><span class="gft"><span class="ko">정상 행</span><span class="en">clean row</span></span><span class="gc ok" title="abl: PASS">✓</span><span class="gc ok" title="full: PASS">✓</span><span class="gc ok" title="v2: PASS">✓</span></div><div class="gr g3"><span class="gid">F13</span><span class="gas">NVDA</span><span class="gft">사실 문장에 (의견) 태그 <i>#9</i></span><span class="gc hit" title="abl: ERROR">●</span><span class="gc hit" title="full: ERROR">●</span><span class="gc hit" title="v2: ERROR">●</span></div><div class="gr g3"><span class="gid">F14</span><span class="gas">ETH</span><span class="gft">&#x27;쉽게 말하면&#x27; 칸에 출처별 값 <i>#11</i></span><span class="gc miss" title="abl: PASS">○</span><span class="gc miss" title="full: PASS">○</span><span class="gc hit" title="v2: WARNING">●</span></div><div class="gr g3"><span class="gid">F15</span><span class="gas">TSLA</span><span class="gft"><span class="ko">정상 행</span><span class="en">clean row</span></span><span class="gc ok" title="abl: PASS">✓</span><span class="gc ok" title="full: PASS">✓</span><span class="gc ok" title="v2: PASS">✓</span></div><div class="gr g3"><span class="gid">F16</span><span class="gas">QQQM</span><span class="gft">출처 (비공식 경로) 표기 누락 <i>#12</i></span><span class="gc miss" title="abl: PASS">○</span><span class="gc hit" title="full: WARNING">●</span><span class="gc hit" title="v2: WARNING">●</span></div><div class="gr g3"><span class="gid">F17</span><span class="gas">SMH</span><span class="gft">차익 실현 하단 반올림 방향 오류 <i>#3</i></span><span class="gc miss" title="abl: PASS">○</span><span class="gc miss" title="full: PASS">○</span><span class="gc hit" title="v2: ERROR">●</span></div><div class="gr g3"><span class="gid">F18</span><span class="gas">BTC</span><span class="gft"><span class="ko">정상 행</span><span class="en">clean row</span></span><span class="gc ok" title="abl: PASS">✓</span><span class="gc ok" title="full: PASS">✓</span><span class="gc ok" title="v2: PASS">✓</span></div><div class="gr g3"><span class="gid">F19</span><span class="gas">SpaceX</span><span class="gft">200일선 없는 종목 판단 보류 <i>#4</i></span><span class="gc hit" title="abl: ERROR">●</span><span class="gc hit" title="full: ERROR">●</span><span class="gc hit" title="v2: ERROR">●</span></div><div class="gr g3"><span class="gid">F20</span><span class="gas">BTC</span><span class="gft">판단 섹션 밖 전망 단정</span><span class="gc hit" title="abl: ERROR">●</span><span class="gc hit" title="full: ERROR">●</span><span class="gc hit" title="v2: ERROR">●</span></div></div>
+      <div class="gh2 g2" style="margin-top:14px"><span>id</span><span>asset</span><span>holdout</span><span>1</span><span>2</span></div>
+      <div class="grid"><div class="gr g2"><span class="gid">H01</span><span class="gas">GOOGL</span><span class="gft">차익 실현 상단 반올림 방향 오류(내림) <i>target</i></span><span class="gc hit" title="full: ERROR">●</span><span class="gc hit" title="v2: ERROR">●</span></div><div class="gr g2"><span class="gid">H02</span><span class="gas">SpaceX</span><span class="gft"><span class="ko">정상 행</span><span class="en">clean row</span></span><span class="gc ok" title="full: PASS">✓</span><span class="gc ok" title="v2: PASS">✓</span></div><div class="gr g2"><span class="gid">H03</span><span class="gas">QQQM</span><span class="gft">고지 문구를 다른 문장으로 바꿈 <i>target</i></span><span class="gc miss" title="full: WARNING">○</span><span class="gc hit" title="v2: ERROR">●</span></div><div class="gr g2"><span class="gid">H04</span><span class="gas">VOO</span><span class="gft">52주 위치 수치 불일치 <i>control</i></span><span class="gc hit" title="full: ERROR">●</span><span class="gc hit" title="v2: ERROR">●</span></div><div class="gr g2"><span class="gid">H05</span><span class="gas">ETH</span><span class="gft"><span class="ko">정상 행</span><span class="en">clean row</span></span><span class="gc ok" title="full: PASS">✓</span><span class="gc ok" title="v2: PASS">✓</span></div><div class="gr g2"><span class="gid">H06</span><span class="gas">NVDA</span><span class="gft">출처 칸 기사 제목 말줄임 <i>target</i></span><span class="gc miss" title="full: PASS">○</span><span class="gc miss" title="v2: PASS">○</span></div><div class="gr g2"><span class="gid">H07</span><span class="gas">TSLA</span><span class="gft">뉴스 인용 문장에 (확인) 태그 <i>control</i></span><span class="gc miss" title="full: PASS">○</span><span class="gc miss" title="v2: PASS">○</span></div><div class="gr g2"><span class="gid">H08</span><span class="gas">BTC</span><span class="gft">&#x27;쉽게 말하면&#x27; 칸에 그 행의 52주 위치 값 <i>target</i></span><span class="gc miss" title="full: PASS">○</span><span class="gc hit" title="v2: WARNING">●</span></div></div>
+      <div class="leg"><span><b class="gc hit">●</b><span class="ko">잡음</span><span class="en">caught</span></span><span><b class="gc miss">○</b><span class="ko">놓침</span><span class="en">missed</span></span><span><b class="gc ok">✓</b><span class="ko">정상 통과</span><span class="en">clean pass</span></span><span><b class="gc fa">!</b><span class="ko">오탐</span><span class="en">false alarm</span></span></div>
+    </div></div>
+  </div>
+  <div class="win"><div class="wt"><span>Market Daily · <span class="ko">실제 운영 판정</span><span class="en">production verdicts</span></span><span>22 rows</span></div><div class="wb">
+    <div class="vl"><div class="vrow"><span class="vd">09/25 <span class="ko">수동</span><span class="en">manual</span></span><span class="vb"><span class="w" style="flex:9">9</span></span></div><div class="vrow"><span class="vd">09/25 <span class="ko">예약</span><span class="en">sched</span></span><span class="vb"><span class="p" style="flex:1">1</span><span class="w" style="flex:1">1</span></span></div><div class="vrow"><span class="vd">09/26 <span class="ko">예약</span><span class="en">sched</span></span><span class="vb"><span class="p" style="flex:5">5</span><span class="e" style="flex:4">4</span></span></div><div class="vrow"><span class="vd">09/27 <span class="ko">예약</span><span class="en">sched</span></span><span class="vb"><span class="p" style="flex:2">2</span></span></div></div>
+    <div class="leg"><span><b class="gc" style="background:var(--up)"></b>PASS</span><span><b class="gc" style="background:var(--amb)"></b>WARNING</span><span><b class="gc" style="background:var(--dn)"></b>ERROR</span></div>
+    <p class="note"><span class="ko">9/26 ERROR 4건은 수치가 아니라 출처 표기 누락과 뉴스 게재일 오기였고, 규칙을 고친 다음 날 행은 모두 PASS였습니다.</span><span class="en">The four ERRORs on 9/26 were a missing source note and a wrong news date, not numbers; after the rule fix, next-day rows all passed.</span></p>
+  </div></div>
+</section>
+
+<section id="ops">
+  <div class="sh"><span class="idx">03 / <span class="ko">운영</span><span class="en">operations</span></span><h2><span class="ko">사고는 규칙 문장이 아니라 권한과 검사로 막았다</span><span class="en">Incidents were closed with permissions and checks, not more prose</span></h2>
+  <p><span class="ko">루틴 실행 26회를 장부로 모았습니다(19회는 로그 전체 확인). 적용 뒤 표본은 작아서 '재발 없음'이 아니라 '아직 관측되지 않음'으로 읽어야 합니다.</span><span class="en">26 routine runs went into a ledger (19 logs read in full). The post-fix sample is small: read it as 'not yet observed', not 'never again'.</span></p></div>
+  <div class="diffs"><div class="df"><div class="dh"><span class="ko">무단 휴대폰 알림</span><span class="en">unrequested phone push</span></div><div class="dm">- 8/14 <span class="ko">실행</span><span class="en">runs</span></div><div class="dp">+ 0/5 <span class="ko">실행</span><span class="en">runs</span></div><div class="dw">PushNotification blocked · 09-26 21:45</div></div><div class="df"><div class="dh"><span class="ko">외부 요청에 회사 이메일</span><span class="en">company e-mail in outbound UA</span></div><div class="dm">- 3/13 <span class="ko">실행</span><span class="en">runs</span></div><div class="dp">+ 0/4 <span class="ko">실행</span><span class="en">runs</span></div><div class="dw">contact rule + pre-request check · 09-26 21:45</div></div><div class="df"><div class="dh"><span class="ko">보조 에이전트에 위임</span><span class="en">delegation to sub-agent</span></div><div class="dm">- 3/18 <span class="ko">실행</span><span class="en">runs</span></div><div class="dp">+ 0/1 <span class="ko">실행</span><span class="en">runs</span></div><div class="dw">Agent · ScheduleWakeup blocked · 09-27 10:57</div></div></div>
+  <div class="win"><div class="wt"><span>tail -n 26 metrics/runs.jsonl</span><span>KST</span></div><div class="wb log"><div class="ll"><span class="lt">09-25 21:18</span><span class="lk dim">--</span><span class="lr">stock-desk</span><span class="lm">TEST</span><span class="ln"> <span class="ko">첫 등록 시험(로그 미조회, 시간은 목록 기준)</span><span class="en">0.8m · log not read</span></span></div><div class="ll"><span class="lt">09-25 21:20</span><span class="lk dim">--</span><span class="lr">crypto-desk</span><span class="lm">TEST</span><span class="ln"> <span class="ko">첫 등록 시험</span><span class="en">8.1m · log not read</span></span></div><div class="ll"><span class="lt">09-25 21:22</span><span class="lk dim">--</span><span class="lr">etf-desk</span><span class="lm">TEST</span><span class="ln"> <span class="ko">첫 등록 시험</span><span class="en">1.1m · log not read</span></span></div><div class="ll"><span class="lt">09-25 21:50</span><span class="lk dim">--</span><span class="lr">market-verifier</span><span class="lm">TEST</span><span class="ln"> <span class="ko">첫 등록 시험</span><span class="en">4.1m · log not read</span></span></div><div class="ll"><span class="lt">09-26 07:01</span><span class="lk ok">OK</span><span class="lr">stock-desk</span><span class="lm">SCHED</span><span class="ln"> <span class="ko">4행 작성. Notion rows 모드 입력 오류 4회 뒤 SQL로 우회</span><span class="en">55 turns · 10.5m</span></span></div><div class="ll"><span class="lt">09-26 07:06</span><span class="lk ok">OK</span><span class="lr">crypto-desk</span><span class="lm">SCHED</span><span class="ln"> <span class="ko">2행. Binance 451 → Coinbase 캔들로 대체</span><span class="en">40 turns · 8.4m</span></span></div><div class="ll"><span class="lt">09-26 07:09</span><span class="lk ok">OK</span><span class="lr">etf-desk</span><span class="lm">SCHED</span><span class="ln"> <span class="ko">3행. Stooq 차단 → Yahoo 차트로 대체</span><span class="en">42 turns · 10.4m</span></span></div><div class="ll"><span class="lt">09-26 07:41</span><span class="lk ok">OK</span><span class="lr">market-verifier</span><span class="lm">SCHED</span><span class="ln"> <span class="ko">9행 검증: PASS 5 · ERROR 4(비공식 경로 표기 누락, GOOGL 뉴스 게재일 8/19)</span><span class="en">75 turns · 9.9m</span></span></div><div class="ll"><span class="lt">09-26 12:16</span><span class="lk ok">OK</span><span class="lr">market-verifier</span><span class="lm">MANUAL</span><span class="ln"><b class="fl bad">PUSH</b><b class="fl warn">AGENT×2</b> <span class="ko">보조 에이전트 2회, 7턴에서 &#x27;백그라운드 실행 중&#x27;으로 한 번 끝남, 휴대폰 알림. Notion 조회 한도 → REST 우회. 주간 브리핑 BTC·ETH 0.00% 오류 적발</span><span class="en">15 turns · 7.7m</span></span></div><div class="ll"><span class="lt">09-26 12:16</span><span class="lk ok">OK</span><span class="lr">kr-desk</span><span class="lm">MANUAL</span><span class="ln"><b class="fl bad">PUSH</b> <span class="ko">국내 4행 빈 칸 채움, 휴대폰 알림</span><span class="en">34 turns · 12.3m</span></span></div><div class="ll"><span class="lt">09-26 12:16</span><span class="lk ok">OK</span><span class="lr">weekly-brief</span><span class="lm">MANUAL</span><span class="ln"><b class="fl bad">PUSH</b> <span class="ko">주간 브리핑 첫 작성(BTC·ETH 0.00% 오류 포함), 휴대폰 알림</span><span class="en">15 turns · 4.0m</span></span></div><div class="ll"><span class="lt">09-26 12:40</span><span class="lk ok">OK</span><span class="lr">kr-verifier</span><span class="lm">MANUAL</span><span class="ln"><b class="fl bad">PUSH</b> <span class="ko">국내 4행 ERROR(태그·출처 형식, 수치는 일치), 휴대폰 알림</span><span class="en">57 turns · 11.1m</span></span></div><div class="ll"><span class="lt">09-26 13:05</span><span class="lk ok">OK</span><span class="lr">event-desk</span><span class="lm">MANUAL</span><span class="ln"><b class="fl bad">PUSH</b><b class="fl bad">EMAIL</b><b class="fl warn">AGENT×3</b> <span class="ko">첫 실행 22행. 보조 에이전트 3회, SEC 요청에 회사 이메일 사용, 휴대폰 알림</span><span class="en">32 turns · 10.7m</span></span></div><div class="ll"><span class="lt">09-26 14:50</span><span class="lk ok">OK</span><span class="lr">weekly-brief</span><span class="lm">MANUAL</span><span class="ln"><b class="fl bad">PUSH</b> <span class="ko">검증 ERROR를 받아 BTC -0.42%·ETH +0.15%로 정정 → 다음 검증 PASS</span><span class="en">19 turns · 7.6m</span></span></div><div class="ll"><span class="lt">09-26 19:00</span><span class="lk ok">OK</span><span class="lr">event-desk</span><span class="lm">SCHED</span><span class="ln"><b class="fl bad">EMAIL</b> <span class="ko">과거 10행. SEC 요청에 회사 이메일 사용</span><span class="en">41 turns · 7.4m</span></span></div><div class="ll"><span class="lt">09-26 19:23</span><span class="lk ok">OK</span><span class="lr">weekly-brief</span><span class="lm">MANUAL</span><span class="ln"><b class="fl bad">PUSH</b> <span class="ko">Opus. 주간 브리핑 + 가치 지표 리포트(검산 5개 통과), 휴대폰 알림</span><span class="en">35 turns · 8.9m</span></span></div><div class="ll"><span class="lt">09-26 20:19</span><span class="lk dim">--</span><span class="lr">stocknews-refresh</span><span class="lm">MANUAL</span><span class="ln"> <span class="ko">첫 시험(총괄 기록상 정상 완료)</span><span class="en">12.9m · log not read</span></span></div><div class="ll"><span class="lt">09-26 20:44</span><span class="lk dim">--</span><span class="lr">stocknews-refresh</span><span class="lm">MANUAL</span><span class="ln"> <span class="ko">전용 환경 시험</span><span class="en">4.6m · log not read</span></span></div><div class="ll"><span class="lt">09-26 21:04</span><span class="lk ok">OK</span><span class="lr">event-desk</span><span class="lm">MANUAL</span><span class="ln"><b class="fl bad">PUSH</b><b class="fl bad">EMAIL</b> <span class="ko">SEC 8-K 접수 시각으로 13행 재측정(GOOGL 부호 반전 등). 회사 이메일 사용, 휴대폰 알림</span><span class="en">61 turns · 8.3m</span></span></div><div class="ll"><span class="lt">09-26 21:10</span><span class="lk dim">--</span><span class="lr">stocknews-refresh</span><span class="lm">MANUAL</span><span class="ln"> <span class="ko">캡션 수정 시험</span><span class="en">1.7m · log not read</span></span></div><div class="ll"><span class="lt">09-26 21:32</span><span class="lk ok">OK</span><span class="lr">event-desk</span><span class="lm">MANUAL</span><span class="ln"><b class="fl warn">AGENT×1</b> <span class="ko">국내 과거 5행. 보조 에이전트 1회(결과 수신 후 반영). 앞쪽 로그 미조회</span><span class="en">28 turns · 7.2m</span></span></div><div class="ll"><span class="lt">09-27 07:04</span><span class="lk ok">OK</span><span class="lr">crypto-desk</span><span class="lm">SCHED</span><span class="ln"> <span class="ko">가드레일 적용 뒤 첫 정기 실행</span><span class="en">43 turns · 8.0m</span></span></div><div class="ll"><span class="lt">09-27 07:40</span><span class="lk ok">OK</span><span class="lr">market-verifier</span><span class="lm">SCHED</span><span class="ln"> <span class="ko">34건 검증(행 2·브리핑 1·이벤트 31) 전부 PASS, SEC는 gmail 연락처</span><span class="en">89 turns · 16.2m</span></span></div><div class="ll"><span class="lt">09-27 08:11</span><span class="lk ok">OK</span><span class="lr">stocknews-refresh</span><span class="lm">SCHED</span><span class="ln"> <span class="ko">교체 11건·차트 11개. 옛 셋업 스크립트(회사 이메일 UA) 상태였음</span><span class="en">31 turns · 4.1m</span></span></div><div class="ll"><span class="lt">09-27 09:39</span><span class="lk ok">OK</span><span class="lr">stocknews-refresh</span><span class="lm">MANUAL</span><span class="ln"> <span class="ko">새 셋업, 연락처 검사 통과(gmail)</span><span class="en">28 turns · 3.2m</span></span></div><div class="ll"><span class="lt">09-27 19:04</span><span class="lk ok">OK</span><span class="lr">event-desk</span><span class="lm">SCHED</span><span class="ln"> <span class="ko">Agent 차단 뒤 첫 실행: 직접 조사로 국내 실적 11행, gmail 연락처</span><span class="en">68 turns · 14.4m</span></span></div></div></div>
+  <div class="stats">
+    <div><b>47</b><span><span class="ko">분류한 이슈 (09-24~27)</span><span class="en">issues classified (09-24~27)</span></span></div>
+    <div><b>55%</b><span><span class="ko">검증 담당이 먼저 잡음 (발견자 확인 33건)</span><span class="en">caught first by the verifier (33 with known finder)</span></span></div>
+    <div><b>39%</b><span><span class="ko">규칙을 적은 뒤에도 재발 (13/33)</span><span class="en">recurred after a rule was written (13/33)</span></span></div>
+    <div><b>12/13</b><span><span class="ko">재발을 드러낸 것: 검증의 재계산·대조</span><span class="en">recurrences exposed by recompute & cross-check</span></span></div>
+  </div>
+  <p><span class="ko">두 프로젝트의 이슈 47건(2026-09-24~27)을 유형·발견자·재발로 분류했습니다. 발견자가 확인된 33건 중 18건(55%)을 검증 담당이 먼저 잡았습니다. 재발을 판단할 수 있는 33건 중 13건(39%)은 규칙을 적은 뒤에도 다시 나왔고, 그 13건 중 12건은 검증 담당과 독립 검토의 재계산·대조에서 드러났습니다. 규칙은 오류를 줄이고, 다시 계산하고 대조하는 검증이 남은 오류를 잡는 구조입니다. 계산식 이슈는 고친 뒤 재발이 확인되지 않았습니다(판단 가능 3건 중 0건).</span><span class="en">47 issues across two projects (2026-09-24~27), classified by type, finder and recurrence. Of the 33 with a known finder, the verifier caught 18 (55%) first. Of the 33 where recurrence can be judged, 13 (39%) came back even after a rule was written — and 12 of those 13 were exposed by the verifier&#x27;s recomputation and cross-checks. Rules reduce errors; a verifier that recomputes catches what remains.</span></p>
+  <div class="win"><div class="wt"><span>git log --incidents</span><span>6 commits</span></div><div class="gitlog"><div class="gl"><span class="gh">#12·13</span><span class="gt">fix(desk)</span><div class="gb"><p class="gw"><span class="ko">주식 4행 출처 칸에 (비공식 경로) 표기 누락, GOOGL 뉴스를 검색일(9/21)로 적음 — 실제 게재 8/19</span><span class="en">Stock rows missed the &#x27;(unofficial path)&#x27; source note; GOOGL news dated by search date (9/21) — actually published 8/19</span></p><p class="gx"><span><span class="ko">발견</span><span class="en">found by</span></span> <span class="ko">검증 담당(예약 실행)</span><span class="en">Verifier (scheduled run)</span></p><p class="gx"><span><span class="ko">조치</span><span class="en">fix</span></span> <span class="ko">표기 대상·원문 최초 게재일 규칙을 프롬프트에 추가, 누락은 WARNING·7일 초과는 ERROR</span><span class="en">Added source-note and first-publication-date rules; missing note = WARNING, news older than 7 days = ERROR</span></p><p class="ga ok">→ <span class="ko">다음 날 행 PASS</span><span class="en">next-day rows PASS</span></p></div></div><div class="gl"><span class="gh">#brief</span><span class="gt">fix(brief)</span><div class="gb"><p class="gw"><span class="ko">주간 브리핑이 BTC·ETH 기간 수익률을 0.00%로 계산(중복 제거 규칙 오적용)</span><span class="en">Weekly brief computed BTC·ETH period return as 0.00% (dedup rule misapplied)</span></p><p class="gx"><span><span class="ko">발견</span><span class="en">found by</span></span> <span class="ko">검증 담당</span><span class="en">Verifier</span></p><p class="gx"><span><span class="ko">조치</span><span class="en">fix</span></span> <span class="ko">브리핑 담당이 ERROR 메모를 읽고 −0.42%·+0.15%로 정정</span><span class="en">Brief agent read the ERROR note and corrected to −0.42% / +0.15%</span></p><p class="ga ok">→ <span class="ko">재검증 PASS</span><span class="en">re-verified PASS</span></p></div></div><div class="gl"><span class="gh">#20</span><span class="gt">fix(event)</span><div class="gb"><p class="gw"><span class="ko">실적 발표 시점 &#x27;미정&#x27; 13행의 기준가를 전날 종가로 잡음</span><span class="en">13 earnings rows with &#x27;unknown&#x27; timing used the prior close as base price</span></p><p class="gx"><span><span class="ko">발견</span><span class="en">found by</span></span> <span class="ko">총괄(사람과 함께 원자료 대조)</span><span class="en">Lead session (with human, raw-data check)</span></p><p class="gx"><span><span class="ko">조치</span><span class="en">fix</span></span> <span class="ko">SEC 8-K 접수 시각(acceptanceDateTime)으로 발표 시점 결정, 자동 재측정 단계 추가</span><span class="en">Timing now set from SEC 8-K acceptanceDateTime; automatic re-measure step added</span></p><p class="ga ok">→ <span class="ko">13행 재측정(GOOGL 초과수익 부호 반전), 검증 34건 PASS</span><span class="en">13 rows re-measured (GOOGL excess flipped sign), 34 checks PASS</span></p></div></div><div class="gl"><span class="gh">#22</span><span class="gt">sec(guard)</span><div class="gb"><p class="gw"><span class="ko">외부 요청 User-Agent에 회사 이메일을 지어 씀, 시키지 않은 휴대폰 알림</span><span class="en">Agent invented a company e-mail for an external API User-Agent; unrequested phone notifications</span></p><p class="gx"><span><span class="ko">발견</span><span class="en">found by</span></span> <span class="ko">사용자</span><span class="en">User</span></p><p class="gx"><span><span class="ko">조치</span><span class="en">fix</span></span> <span class="ko">10개 루틴 disallowed_tools에 PushNotification, 연락처 규칙, stocknews는 외부 요청 전 연락처 검사</span><span class="en">PushNotification blocked on all 10 routines, contact rule, pre-request contact check in stocknews</span></p><p class="ga ok">→ <span class="ko">적용 후 실행에서 0건</span><span class="en">0 after the fix</span></p></div></div><div class="gl"><span class="gh">#23</span><span class="gt">sec(guard)</span><div class="gb"><p class="gw"><span class="ko">event-desk가 조사를 백그라운드 보조 에이전트에 맡기고 결과 전에 종료</span><span class="en">event-desk handed research to a background sub-agent and exited before results came back</span></p><p class="gx"><span><span class="ko">발견</span><span class="en">found by</span></span> <span class="ko">총괄(실행 로그)</span><span class="en">Lead session (run log)</span></p><p class="gx"><span><span class="ko">조치</span><span class="en">fix</span></span> <span class="ko">10개 루틴에서 Agent·ScheduleWakeup 차단, 배포 후 프롬프트 글자 대조</span><span class="en">Agent·ScheduleWakeup blocked on all 10 routines; deployed prompts diffed against source</span></p><p class="ga watch">→ <span class="ko">첫 실행에서 직접 조사로 11행</span><span class="en">first run: 11 rows researched directly</span></p></div></div><div class="gl"><span class="gh">#15·18</span><span class="gt">perf(notion)</span><div class="gb"><p class="gw"><span class="ko">Notion SQL 조회가 워크스페이스 한도에 걸려 검증 실행이 우회로를 찾아 헤맴</span><span class="en">Notion SQL queries hit the workspace quota; verifier runs wandered looking for workarounds</span></p><p class="gx"><span><span class="ko">발견</span><span class="en">found by</span></span> <span class="ko">검증 담당·Rerun 독립 검증</span><span class="en">Verifier · independent review</span></p><p class="gx"><span><span class="ko">조치</span><span class="en">fix</span></span> <span class="ko">DB마다 루틴 전용 view를 만들고 여러 행 읽기는 view 모드만 사용</span><span class="en">Per-DB routine views; multi-row reads use view mode only</span></p><p class="ga ok">→ <span class="ko">이후 실행에서 한도 오류 없음</span><span class="en">no quota errors since</span></p></div></div></div></div>
+</section>
+
+<section id="find">
+  <div class="sh"><span class="idx">04 / <span class="ko">발견</span><span class="en">findings</span></span><h2><span class="ko">판단 규칙은 수익 신호가 아니라 위험 관리 도구였다</span><span class="en">The trading rule was a risk control, not a return signal</span></h2>
+  <p><span class="ko">매일의 판단 뒤 60일을 겹쳐 세면 <b>'비중 축소' 뒤가 가장 좋아</b> 규칙이 거꾸로 작동하는 것처럼 보였습니다. 겹치지 않는 창으로 다시 뽑자 차이는 신뢰구간 안에서 사라졌습니다. 규칙을 비중으로 쓰면 수익은 11개 자산에서 줄었지만 낙폭은 11개 자산에서 얕아졌습니다.</span><span class="en">Counting overlapping 60-day windows made <b>'REDUCE' look like the best entry</b> — as if the rule worked backwards. With non-overlapping windows the gap vanished inside the confidence intervals. Used as position sizing, the rule lowered return on 11 assets but reduced max drawdown on 11.</span></p></div>
+  <div class="win"><div class="wt"><span><span class="ko">최대 낙폭 · 보유 vs 규칙</span><span class="en">max drawdown · hold vs rule</span></span><span>2025-01 → 2026-09</span></div><div class="wb ch"><svg viewBox="0 0 760 464" role="img" aria-label="max drawdown hold vs rule"><line x1="124.0" y1="36" x2="124.0" y2="440" class="gridl"/><text x="124.0" y="458" class="ax" text-anchor="middle">0</text><line x1="203.4" y1="36" x2="203.4" y2="440" class="gridl"/><text x="203.4" y="458" class="ax" text-anchor="middle">-10%</text><line x1="282.9" y1="36" x2="282.9" y2="440" class="gridl"/><text x="282.9" y="458" class="ax" text-anchor="middle">-20%</text><line x1="362.3" y1="36" x2="362.3" y2="440" class="gridl"/><text x="362.3" y="458" class="ax" text-anchor="middle">-30%</text><line x1="441.7" y1="36" x2="441.7" y2="440" class="gridl"/><text x="441.7" y="458" class="ax" text-anchor="middle">-40%</text><line x1="521.1" y1="36" x2="521.1" y2="440" class="gridl"/><text x="521.1" y="458" class="ax" text-anchor="middle">-50%</text><line x1="600.6" y1="36" x2="600.6" y2="440" class="gridl"/><text x="600.6" y="458" class="ax" text-anchor="middle">-60%</text><line x1="680.0" y1="36" x2="680.0" y2="440" class="gridl"/><text x="680.0" y="458" class="ax" text-anchor="middle">-70%</text><circle cx="129" cy="14" r="5" class="dh"/><text class="ko ax" x="140" y="18">단순 보유</text><text class="en ax" x="140" y="18">buy &amp; hold</text><circle cx="254" cy="14" r="5" class="dr"/><text class="ko ax" x="265" y="18">규칙 전략</text><text class="en ax" x="265" y="18">rule strategy</text><text x="110" y="63.0" class="lb" text-anchor="end">ETH</text><line x1="661.0" y1="59.0" x2="443.3" y2="59.0" class="sg"/><circle cx="661.0" cy="59.0" r="5" class="dh"/><circle cx="443.3" cy="59.0" r="5" class="dr"/><text x="673.0" y="63.0" class="nv up">+27.4pp</text><text x="110" y="93.0" class="lb" text-anchor="end">BTC</text><line x1="545.4" y1="89.0" x2="373.0" y2="89.0" class="sg"/><circle cx="545.4" cy="89.0" r="5" class="dh"/><circle cx="373.0" cy="89.0" r="5" class="dr"/><text x="557.4" y="93.0" class="nv up">+21.7pp</text><text x="110" y="123.0" class="lb" text-anchor="end">AAPL</text><line x1="364.1" y1="119.0" x2="279.4" y2="119.0" class="sg"/><circle cx="364.1" cy="119.0" r="5" class="dh"/><circle cx="279.4" cy="119.0" r="5" class="dr"/><text x="376.1" y="123.0" class="nv up">+10.7pp</text><text x="110" y="153.0" class="lb" text-anchor="end">두산에너빌리티</text><line x1="567.7" y1="149.0" x2="495.5" y2="149.0" class="sg"/><circle cx="567.7" cy="149.0" r="5" class="dh"/><circle cx="495.5" cy="149.0" r="5" class="dr"/><text x="579.7" y="153.0" class="nv up">+9.1pp</text><text x="110" y="183.0" class="lb" text-anchor="end">NVDA</text><line x1="417.0" y1="179.0" x2="350.0" y2="179.0" class="sg"/><circle cx="417.0" cy="179.0" r="5" class="dh"/><circle cx="350.0" cy="179.0" r="5" class="dr"/><text x="429.0" y="183.0" class="nv up">+8.4pp</text><text x="110" y="213.0" class="lb" text-anchor="end">SMH</text><line x1="383.3" y1="209.0" x2="319.6" y2="209.0" class="sg"/><circle cx="383.3" cy="209.0" r="5" class="dh"/><circle cx="319.6" cy="209.0" r="5" class="dr"/><text x="395.3" y="213.0" class="nv up">+8.0pp</text><text x="110" y="243.0" class="lb" text-anchor="end">QQQM</text><line x1="305.3" y1="239.0" x2="253.4" y2="239.0" class="sg"/><circle cx="305.3" cy="239.0" r="5" class="dh"/><circle cx="253.4" cy="239.0" r="5" class="dr"/><text x="317.3" y="243.0" class="nv up">+6.5pp</text><text x="110" y="273.0" class="lb" text-anchor="end">현대차</text><line x1="546.6" y1="269.0" x2="508.2" y2="269.0" class="sg"/><circle cx="546.6" cy="269.0" r="5" class="dh"/><circle cx="508.2" cy="269.0" r="5" class="dr"/><text x="558.6" y="273.0" class="nv up">+4.8pp</text><text x="110" y="303.0" class="lb" text-anchor="end">GOOGL</text><line x1="361.4" y1="299.0" x2="323.1" y2="299.0" class="sg"/><circle cx="361.4" cy="299.0" r="5" class="dh"/><circle cx="323.1" cy="299.0" r="5" class="dr"/><text x="373.4" y="303.0" class="nv up">+4.8pp</text><text x="110" y="333.0" class="lb" text-anchor="end">VOO</text><line x1="274.7" y1="329.0" x2="237.0" y2="329.0" class="sg"/><circle cx="274.7" cy="329.0" r="5" class="dh"/><circle cx="237.0" cy="329.0" r="5" class="dr"/><text x="286.7" y="333.0" class="nv up">+4.7pp</text><text x="110" y="363.0" class="lb" text-anchor="end">삼성전자</text><line x1="464.7" y1="359.0" x2="464.7" y2="359.0" class="sf"/><circle cx="464.7" cy="359.0" r="5" class="dh"/><circle cx="464.7" cy="359.0" r="5" class="dr"/><text x="476.7" y="363.0" class="nv ">0.0pp</text><text x="110" y="393.0" class="lb" text-anchor="end">SK하이닉스</text><line x1="558.6" y1="389.0" x2="558.6" y2="389.0" class="sf"/><circle cx="558.6" cy="389.0" r="5" class="dh"/><circle cx="558.6" cy="389.0" r="5" class="dr"/><text x="570.6" y="393.0" class="nv ">0.0pp</text><text x="110" y="423.0" class="lb" text-anchor="end">TSLA</text><line x1="506.8" y1="419.0" x2="548.3" y2="419.0" class="sb"/><circle cx="506.8" cy="419.0" r="5" class="dh"/><circle cx="548.3" cy="419.0" r="5" class="dr"/><text x="560.3" y="423.0" class="nv dn">-5.2pp</text></svg></div></div>
+  <div class="two">
+      <div class="win"><div class="wt"><span><span class="ko">판단별 60일 뒤 · 90% 구간</span><span class="en">60d forward · 90% CI</span></span><span>bootstrap 2000</span></div><div class="wb ch"><svg viewBox="0 0 760 202" role="img" aria-label="60-day forward return by label with 90% CI"><line x1="124.0" y1="26" x2="124.0" y2="178" class="gridl"/><text x="124.0" y="196" class="ax" text-anchor="middle">-5%</text><line x1="209.1" y1="26" x2="209.1" y2="178" class="gridl"/><text x="209.1" y="196" class="ax" text-anchor="middle">+0%</text><line x1="294.3" y1="26" x2="294.3" y2="178" class="gridl"/><text x="294.3" y="196" class="ax" text-anchor="middle">+5%</text><line x1="379.4" y1="26" x2="379.4" y2="178" class="gridl"/><text x="379.4" y="196" class="ax" text-anchor="middle">+10%</text><line x1="464.6" y1="26" x2="464.6" y2="178" class="gridl"/><text x="464.6" y="196" class="ax" text-anchor="middle">+15%</text><line x1="549.7" y1="26" x2="549.7" y2="178" class="gridl"/><text x="549.7" y="196" class="ax" text-anchor="middle">+20%</text><line x1="634.9" y1="26" x2="634.9" y2="178" class="gridl"/><text x="634.9" y="196" class="ax" text-anchor="middle">+25%</text><line x1="720.0" y1="26" x2="720.0" y2="178" class="gridl"/><text x="720.0" y="196" class="ax" text-anchor="middle">+30%</text><line x1="433.7" y1="18" x2="433.7" y2="178" class="bl"/><text class="ko ax" x="439.7" y="28">전체 평균 +13.2%</text><text class="en ax" x="439.7" y="28">all windows +13.2%</text><text class="ko lb" x="110" y="54" text-anchor="end">관심</text><text class="en lb" x="110" y="54" text-anchor="end">WATCH</text><rect x="313.8" y="43" width="281.0" height="14" rx="2" class="ci"/><circle cx="442.0" cy="50" r="5" class="dr"/><text x="604.8" y="54" class="nv">+13.7% n=64</text><text class="ko lb" x="110" y="100" text-anchor="end">관망</text><text class="en lb" x="110" y="100" text-anchor="end">HOLD</text><rect x="337.8" y="89" width="223.2" height="14" rx="2" class="ci"/><circle cx="447.3" cy="96" r="5" class="dr"/><text x="571.0" y="100" class="nv">+14.0% n=13</text><text class="ko lb" x="110" y="146" text-anchor="end">비중 축소</text><text class="en lb" x="110" y="146" text-anchor="end">REDUCE</text><rect x="227.8" y="135" width="343.7" height="14" rx="2" class="ci"/><circle cx="398.3" cy="142" r="5" class="dr"/><text x="581.5" y="146" class="nv">+11.1% n=20</text></svg></div></div>
+      <div class="win"><div class="wt"><span><span class="ko">실적 다음 날 움직임 ÷ 평소 하루</span><span class="en">day-after-earnings move ÷ typical day</span></span><span>US · KR</span></div><div class="wb ch"><svg viewBox="0 0 760 262" role="img" aria-label="day-after-earnings move vs typical day"><line x1="124.0" y1="6" x2="124.0" y2="240" class="gridl"/><text x="124.0" y="258" class="ax" text-anchor="middle">0x</text><line x1="268.0" y1="6" x2="268.0" y2="240" class="gridl"/><text x="268.0" y="258" class="ax" text-anchor="middle">1x</text><line x1="412.0" y1="6" x2="412.0" y2="240" class="gridl"/><text x="412.0" y="258" class="ax" text-anchor="middle">2x</text><line x1="556.0" y1="6" x2="556.0" y2="240" class="gridl"/><text x="556.0" y="258" class="ax" text-anchor="middle">3x</text><line x1="700.0" y1="6" x2="700.0" y2="240" class="gridl"/><text x="700.0" y="258" class="ax" text-anchor="middle">4x</text><text x="110" y="25" class="lb" text-anchor="end">GOOGL</text><rect x="124" y="15" width="504.0" height="14" class="bus"/><text x="636.0" y="26" class="nv">3.5x</text><text x="110" y="53" class="lb" text-anchor="end">NVDA</text><rect x="124" y="43" width="345.6" height="14" class="bus"/><text x="477.6" y="54" class="nv">2.4x</text><text x="110" y="81" class="lb" text-anchor="end">AAPL</text><rect x="124" y="71" width="331.2" height="14" class="bus"/><text x="463.2" y="82" class="nv">2.3x</text><text x="110" y="109" class="lb" text-anchor="end">TSLA</text><rect x="124" y="99" width="331.2" height="14" class="bus"/><text x="463.2" y="110" class="nv">2.3x</text><text x="110" y="137" class="lb" text-anchor="end">현대차</text><rect x="124" y="127" width="230.4" height="14" class="bkr"/><text x="362.4" y="138" class="nv">1.6x</text><text x="110" y="165" class="lb" text-anchor="end">SK하이닉스</text><rect x="124" y="155" width="201.6" height="14" class="bkr"/><text x="333.6" y="166" class="nv">1.4x</text><text x="110" y="193" class="lb" text-anchor="end">두산에너빌리티</text><rect x="124" y="183" width="172.8" height="14" class="bkr"/><text x="304.8" y="194" class="nv">1.2x</text><text x="110" y="221" class="lb" text-anchor="end">삼성전자</text><rect x="124" y="211" width="158.4" height="14" class="bkr"/><text x="290.4" y="222" class="nv">1.1x</text><line x1="268.0" y1="6" x2="268.0" y2="240" class="bl"/></svg></div></div>
+  </div>
+  <p class="note"><span class="ko">비중 = 관심 100% · 관망 50% · 비중 축소 0%, 거래 비용 0. 사후 점검이며 표본 밖 성과는 2026-09-26부터 따로 쌓습니다. 미국 종목은 실적 다음 날 평소 하루의 2.3~3.5배를 움직였지만 방향은 일정하지 않아, 이벤트 전날 브리핑은 방향이 아니라 흔들림의 크기를 알립니다.</span><span class="en">Sizing = WATCH 100% · HOLD 50% · REDUCE 0%, zero costs. In-sample check; out-of-sample tracking started 2026-09-26. US names moved 2.3–3.5× a typical day after earnings with no consistent direction, so the pre-event brief flags the size of the move, not its sign.</span></p>
+  <details><summary><span class="ko">자산별 수익률·낙폭 표</span><span class="en">per-asset return & drawdown table</span></summary><div class="tb"><table class="st"><thead><tr><th>asset</th><th>hold</th><th>rule</th><th>Δpp</th><th>hold MDD</th><th>rule MDD</th><th>exposure</th></tr></thead><tbody><tr><td>TSLA</td><td>-1.9%</td><td>-47.4%</td><td class="dn">-45.5</td><td>-48.2%</td><td>-53.4%</td><td>57%</td></tr><tr><td>GOOGL</td><td>+81.6%</td><td>+48.5%</td><td class="dn">-33.1</td><td>-29.9%</td><td>-25.1%</td><td>83%</td></tr><tr><td>NVDA</td><td>+62.7%</td><td>+23.4%</td><td class="dn">-39.4</td><td>-36.9%</td><td>-28.5%</td><td>84%</td></tr><tr><td>AAPL</td><td>+39.9%</td><td>+18.9%</td><td class="dn">-21.0</td><td>-30.2%</td><td>-19.6%</td><td>75%</td></tr><tr><td>VOO</td><td>+32.2%</td><td>+19.5%</td><td class="dn">-12.7</td><td>-19.0%</td><td>-14.2%</td><td>88%</td></tr><tr><td>SMH</td><td>+147.8%</td><td>+117.4%</td><td class="dn">-30.4</td><td>-32.6%</td><td>-24.6%</td><td>84%</td></tr><tr><td>QQQM</td><td>+45.9%</td><td>+29.7%</td><td class="dn">-16.3</td><td>-22.8%</td><td>-16.3%</td><td>88%</td></tr><tr><td>BTC</td><td>-10.6%</td><td>-11.5%</td><td class="dn">-0.9</td><td>-53.1%</td><td>-31.4%</td><td>47%</td></tr><tr><td>ETH</td><td>-19.6%</td><td>+2.5%</td><td class="up">+22.1</td><td>-67.6%</td><td>-40.2%</td><td>35%</td></tr><tr><td>삼성전자</td><td>+436.5%</td><td>+361.1%</td><td class="dn">-75.4</td><td>-42.9%</td><td>-42.9%</td><td>73%</td></tr><tr><td>SK하이닉스</td><td>+988.2%</td><td>+744.1%</td><td class="dn">-244.1</td><td>-54.7%</td><td>-54.7%</td><td>93%</td></tr><tr><td>현대차</td><td>+68.8%</td><td>+84.1%</td><td class="up">+15.3</td><td>-53.2%</td><td>-48.4%</td><td>60%</td></tr><tr><td>두산에너빌리티</td><td>+357.9%</td><td>+293.0%</td><td class="dn">-64.9</td><td>-55.9%</td><td>-46.8%</td><td>87%</td></tr></tbody></table></div></details>
+</section>
+
+<section id="roles">
+  <div class="sh"><span class="idx">05 / <span class="ko">한 일</span><span class="en">what I did</span></span><h2><span class="ko">직무별로 보면</span><span class="en">By role</span></h2></div>
+  <div class="roles"><article class="role"><div class="rh">$ whoami --role=ax</div><h3><span class="ko">에이전트 설계·평가·가드레일</span><span class="en">Agent design · evaluation · guardrails</span></h3><ul><li><span class="ko">담당·검증·요약·이벤트 역할을 나눈 클라우드 예약 루틴 10개를 설계하고, 검증 에이전트가 모든 수치를 원출처에서 다시 계산하게 해 오류를 사람보다 먼저 잡게 했다</span><span class="en">Designed 10 scheduled cloud routines split into research, verify, summarize and event roles; the verifier recomputes every number from the source so errors are caught before a human sees them</span></li><li><span class="ko">결함을 심은 시험 행으로 검증 에이전트를 채점하고, 놓친 유형만 겨냥해 규칙을 고친 뒤 다시 쟀다: 같은 세트 66.7%→91.7%, 규칙을 고친 뒤 새로 만든 holdout 33.3%→66.7%, 오탐 0 유지. 프롬프트로 안 되는 항목(기사 제목 대조)은 스크립트로 옮길 대상으로 분리했다</span><span class="en">Graded the verifier on rows with planted defects, patched rules only for the misses and re-graded: same set 66.7% → 91.7%, fresh holdout 33.3% → 66.7%, zero false alarms. Checks prompts can&#x27;t do reliably (headline matching) were split out for a script</span></li><li><span class="ko">실행 로그 26회를 장부로 모아 사고 3종(회사 이메일·무단 알림·보조 에이전트 위임)을 도구 차단과 프롬프트 규칙으로 막고, 적용 뒤 위반 0건을 확인했다</span><span class="en">Logged 26 runs into a ledger and closed three incident classes (invented e-mail, unrequested notifications, sub-agent delegation) with tool blocks and prompt rules — 0 violations after</span></li><li><span class="ko">프롬프트를 규칙 파일에서 조립하고 배포 뒤 저장본과 글자 단위로 대조하는 절차로 손 복사 오류를 막았다</span><span class="en">Prompts are assembled from rule files and the deployed copy is diffed character-by-character against source</span></li></ul></article><article class="role"><div class="rh">$ whoami --role=de</div><h3><span class="ko">데이터 파이프라인·품질</span><span class="en">Data pipeline · quality</span></h3><ul><li><span class="ko">원출처(Yahoo·Nasdaq·네이버·SEC) → 원자료 보존 → 계산 → Notion upsert(자산+기준 시각 멱등 키)로 이어지는 흐름과 품질 장치를 문서화했다</span><span class="en">Documented the flow source (Yahoo · Nasdaq · Naver · SEC) → raw archive → compute → Notion upsert with an idempotent asset+timestamp key</span></li><li><span class="ko">실적 발표 시점을 SEC 8-K 접수 시각으로 결정하도록 바꿔 13행을 재측정했고, 이벤트 반응 값을 가격 이력으로 다시 계산해 전부 일치시켰다</span><span class="en">Switched earnings timing to SEC 8-K acceptance time, re-measured 13 rows, and recomputed all event reactions from price history (42/42 match)</span></li><li><span class="ko">표준 라이브러리만으로 지표·백필·평가 스크립트를 만들어 어느 환경에서나 재현되게 했다</span><span class="en">Indicators, backfill and eval scripts use the Python standard library only, so they reproduce anywhere</span></li></ul></article><article class="role"><div class="rh">$ whoami --role=da</div><h3><span class="ko">분석·인사이트</span><span class="en">Analysis · insight</span></h3><ul><li><span class="ko">겹치는 표본 백테스트가 만든 &#x27;규칙이 거꾸로 작동한다&#x27;는 착시를 겹치지 않는 창과 부트스트랩으로 바로잡고, 규칙이 수익이 아니라 낙폭을 줄이는 도구임을 보였다</span><span class="en">Corrected an overlapping-window backtest that suggested the rule &#x27;works backwards&#x27;; with non-overlapping windows and bootstrap CIs the rule reduces drawdown rather than adding return</span></li><li><span class="ko">실적 발표 반응을 평소 변동성 대비 배수로 표준화해, 전날 브리핑이 방향이 아니라 흔들림의 크기를 알리게 했다</span><span class="en">Normalized earnings reactions by each asset&#x27;s typical daily move, so the pre-event brief warns about size of the move, not direction</span></li><li><span class="ko">표본 밖 성과를 2026-09-26부터 따로 쌓아 사후 점검과 섞이지 않게 했다</span><span class="en">Out-of-sample tracking starts 2026-09-26 and is kept separate from the in-sample check</span></li></ul></article></div>
+</section>
+
+<section>
+  <div class="sh"><span class="idx">06 / <span class="ko">한계</span><span class="en">limits</span></span><h2><span class="ko">아직 말할 수 없는 것</span><span class="en">What this can't claim yet</span></h2></div>
+  <ul class="lim">
+    <li><span class="ko">운영 데이터가 이틀치입니다. 성공률과 재발 여부는 2026-10-25에 다시 잽니다.</span><span class="en">Two days of operations data; success and recurrence are re-measured on 2026-10-25.</span></li>
+    <li><span class="ko">평가 세트는 20행+holdout 8행이라 결함 1건이 8~17%p입니다. 문장 판정은 같은 계열 모델이 합니다.</span><span class="en">The eval set has 20 + 8 holdout rows (one defect = 8–17 pp), and sentence-level judgments come from the same model family.</span></li>
+    <li><span class="ko">토큰·비용은 실행 로그에 나오지 않아 재지 못했습니다.</span><span class="en">Token cost isn't exposed in run logs, so it wasn't measured.</span></li>
+    <li><span class="ko">가격 일부는 비공식 경로에서 받았고, 모든 행에 그 사실을 적습니다. 투자 권유가 아닙니다.</span><span class="en">Some prices come from unofficial endpoints, flagged on every row. Not investment advice.</span></li>
+  </ul>
+</section>
+<section id="pos">
+  <div class="sh"><span class="idx">07 / <span class="ko">포지션</span><span class="en">positions</span></span><h2><span class="ko">내 매매 기록으로 보는 지금 손익</span><span class="en">What my own trades are worth now</span></h2>
+  <p><span class="ko">산 종목만 적으면 됩니다. 수량·단가·금액 중 둘을 적으면 나머지를 계산하고, 단가를 비우면 그날 종가로 추정합니다. 평균 단가는 이동평균법, 현재가는 마지막 종가이며 직접 바꿀 수 있습니다.</span><span class="en">Log only what you bought. Enter two of quantity, price and amount and the third is derived; leave price blank to use that day's close (marked as an estimate). Average cost uses the moving-average method; current price is the last close and can be overridden.</span></p></div>
+  <div class="pmode demo" id="pmode"></div>
+  <div class="win"><div class="wt"><span>$ trade add</span><span><span class="ko">종가 기준</span><span class="en">closes as of</span> <b id="pxasof"></b></span></div><div class="wb">
+    <form id="pf" class="pf" autocomplete="off">
+      <label><span class="ko">날짜</span><span class="en">date</span><input type="date" name="date" required></label>
+      <label><span class="ko">종목</span><span class="en">asset</span><select name="asset"></select></label>
+      <div class="side"><span class="lbl"><span class="ko">구분</span><span class="en">side</span></span><input type="hidden" name="side" value="buy"><div class="seg" role="group"><button type="button" data-side="buy" aria-pressed="true"><span class="ko">매수</span><span class="en">BUY</span></button><button type="button" data-side="sell" aria-pressed="false"><span class="ko">매도</span><span class="en">SELL</span></button></div></div>
+      <label><span class="ko">수량</span><span class="en">quantity</span><input type="number" name="qty" step="any" min="0" inputmode="decimal"></label>
+      <label><span class="ko">단가</span><span class="en">price</span><input type="number" name="price" step="any" min="0" inputmode="decimal"></label>
+      <label><span class="ko">금액</span><span class="en">amount</span><input type="number" name="amount" step="any" min="0" inputmode="decimal"></label>
+      <label><span class="ko">수수료</span><span class="en">fee</span><input type="number" name="fee" step="any" min="0" inputmode="decimal"></label>
+      <label><span class="ko">메모</span><span class="en">memo</span><input type="text" name="memo" maxlength="200"></label>
+      <div class="act"><button class="btn" type="submit"><span class="ko">기록 추가</span><span class="en">add trade</span></button><span class="pmsg" id="pmsg" role="status"></span></div>
+    </form>
+    <p class="note"><span class="ko">통화는 종목 통화 그대로입니다(미국 주식·ETF·크립토 USD, 국내 KRW). 세금은 넣지 않습니다. 'VOO 대비'는 같은 날 같은 돈을 VOO에 넣고 같은 비율로 팔았을 때와의 총수익률 차이입니다.</span><span class="en">Amounts stay in the asset's currency (US stocks · ETFs · crypto in USD, Korean stocks in KRW). Taxes are not modeled. 'vs VOO' compares total return with putting the same money into VOO on the same days and selling the same fractions.</span></p>
+  </div></div>
+  <div class="ins" id="pins" hidden></div>
+  <div class="pk" id="pk"></div>
+  <div class="win" id="pwrap"><div class="wt"><span>positions</span><span><span class="ko">가진 종목만</span><span class="en">held assets only</span></span></div><div class="tb"><table class="st" id="ptab"></table></div>
+    <details class="ovr-d"><summary><span class="ko">현재가 직접 입력 · 환율</span><span class="en">override price · FX</span></summary><div class="ovr" id="povr"></div></details></div>
+  <div class="win"><div class="wt"><span>trades</span><span id="tcount"></span></div><div class="tb"><table class="st" id="ttab"></table></div></div>
+  <p class="note"><span class="ko">투자 권유가 아닌 개인 기록용 계산입니다. 추정 표시가 붙은 값은 실제 체결가와 다를 수 있습니다.</span><span class="en">Personal bookkeeping, not investment advice. Values marked as estimates may differ from actual fills.</span></p>
+</section>
+<footer><span class="ko">수치</span><span class="en">data</span>: metrics/ops_metrics.json · runs.jsonl · verdicts.jsonl · signal_eval.json · events_study.csv · issues_summary.md · eval/REPORT.md — <span class="ko">생성</span><span class="en">built by</span> docs/build_case_study.py · <a href="https://github.com/ejmogly/market-watch">github.com/ejmogly/market-watch</a></footer>
+</main>
+<script type="application/json" id="px-data">{"asof":"2026-11-05","assets":{"TSLA":{"cur":"USD","d":["2026-11-05"],"c":[343.690002],"l":[2]},"GOOGL":{"cur":"USD","d":["2026-11-05"],"c":[282.570007],"l":[2]},"NVDA":{"cur":"USD","d":["2026-11-05"],"c":[181.600006],"l":[1]},"SpaceX":{"cur":"USD","d":["2026-11-05"],"c":[123.620003],"l":[2]},"AAPL":{"cur":"USD","d":["2026-11-05"],"c":[344.170013],"l":[0]},"VOO":{"cur":"USD","d":["2026-11-05"],"c":[673.969971],"l":[0]},"SMH":{"cur":"USD","d":["2026-11-05"],"c":[447.730011],"l":[1]},"QQQM":{"cur":"USD","d":["2026-11-05"],"c":[266.850006],"l":[1]},"BTC":{"cur":"USD","d":["2026-11-04"],"c":[80405.289062],"l":[0]},"ETH":{"cur":"USD","d":["2026-11-04"],"c":[2422.311768],"l":[0]},"삼성전자":{"cur":"KRW","d":["2026-11-05"],"c":[201500.0],"l":[1]},"SK하이닉스":{"cur":"KRW","d":["2026-11-05"],"c":[1262000.0],"l":[1]},"현대차":{"cur":"KRW","d":["2026-11-05"],"c":[293000.0],"l":[2]},"두산에너빌리티":{"cur":"KRW","d":["2026-11-05"],"c":[49000.0],"l":[2]}},"fx":{"d":["2026-11-05"],"c":[1356.3]}}</script>
+<script type="application/json" id="px-demo">[]</script>
+<script>
+/* 07 포지션 — 매수·매도 기록으로 지금 손익을 계산한다.
+ * 아티팩트·GitHub Pages: 저장하지 않고 입력한 거래를 그 자리에서 계산만 한다(새로고침하면 사라짐).
+ * 로컬 private/positions.html: private/trades.csv가 원본이고 화면 입력칸은 숨긴다(window.MW_LOCAL).
+ * 평균 단가는 이동평균법, 수수료·세금은 입력한 수수료만 반영, 통화는 종목 통화 그대로(환율 입력 시 원화 합계 추가). */
+(function () {
+  'use strict';
+  var PX = JSON.parse(document.getElementById('px-data').textContent);
+  var DEMO = JSON.parse(document.getElementById('px-demo').textContent);
+  var A = PX.assets, NAMES = Object.keys(A);
+  var LBL = [['관심', 'WATCH', 'up'], ['관망', 'HOLD', 'amb'], ['비중 축소', 'REDUCE', 'dn']];
+  var $ = function (id) { return document.getElementById(id); };
+
+  var state = { mode: 'loading', trades: DEMO.slice(), settings: { fx: null, px: {} } };
+  var store = null; // {col, set}
+
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function t(ko, en) { return '<span class="ko">' + ko + '</span><span class="en">' + en + '</span>'; }
+  function num(v) { if (v === '' || v == null) return null; var n = Number(v); return isFinite(n) ? n : null; }
+  function today() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+
+  // ---- 가격·환율 조회: date 이하 마지막 거래일 ----
+  function find(d, date) {
+    var lo = 0, hi = d.length - 1, r = -1;
+    while (lo <= hi) { var m = (lo + hi) >> 1; if (d[m] <= date) { r = m; lo = m + 1; } else hi = m - 1; }
+    return r;
+  }
+  function at(a, date) {
+    var s = A[a]; if (!s) return null;
+    var r = find(s.d, date);
+    return r < 0 ? null : { p: s.c[r], d: s.d[r], l: s.l[r] };
+  }
+  var FX = PX.fx && PX.fx.d && PX.fx.d.length ? PX.fx : null;
+  function fxAt(date) { if (!FX) return null; var r = find(FX.d, date); return r < 0 ? null : { r: FX.c[r], d: FX.d[r] }; }
+  function fxNow() {
+    var o = num(state.settings.fx);
+    if (o > 0) return { r: o, d: null };
+    return FX ? { r: FX.c[FX.c.length - 1], d: FX.d[FX.d.length - 1] } : null;
+  }
+  function last(a) { var s = A[a]; return s ? { p: s.c[s.c.length - 1], d: s.d[s.d.length - 1] } : null; }
+  function cur(a) { return A[a] ? A[a].cur : 'USD'; }
+
+  // ---- 표기 ----
+  function money(v, c) {
+    if (v == null || !isFinite(v)) return '—';
+    var k = c === 'KRW', o = { minimumFractionDigits: k ? 0 : 2, maximumFractionDigits: k ? 0 : 2 };
+    return (v < 0 ? '−' : '') + (k ? '₩' : '$') + Math.abs(v).toLocaleString('en-US', o);
+  }
+  function signed(v, c) { return v == null || !isFinite(v) ? '—' : (v > 0 ? '+' : '') + money(v, c); }
+  function pct(v) { return v == null || !isFinite(v) ? '—' : (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(2) + '%'; }
+  function qty(q) { return (+q.toFixed(8)).toLocaleString('en-US', { maximumFractionDigits: 8 }); }
+  function tone(v) { return v > 1e-9 ? 'up' : v < -1e-9 ? 'dn' : ''; }
+  function rule(code) { var x = LBL[code]; return x ? '<span class="rl ' + x[2] + '">' + t(x[0], x[1]) + '</span>' : '<span class="dim">—</span>'; }
+
+  // ---- 한 거래 풀기: 수량·단가·금액 중 둘이면 나머지 계산, 단가가 없으면 그날 종가(추정) ----
+  function resolve(tr) {
+    var q = num(tr.qty), p = num(tr.price), m = num(tr.amount), est = false;
+    if (p == null && q != null && m != null && q > 0) p = m / q;
+    if (p == null) {
+      var c = at(tr.asset, tr.date);
+      if (!c) return { err: t('그날 종가가 없어 단가를 적어야 합니다', 'no close on file for that date — enter a price') };
+      p = c.p; est = true;
+    }
+    if (q == null && m != null) q = m / p;
+    if (!(q > 0) || !(p > 0)) return { err: t('수량·단가·금액 중 둘을 적어 주세요', 'enter two of quantity, price, amount') };
+    return { q: q, p: p, est: est };
+  }
+
+  // ---- 계산 ----
+  function compute() {
+    var tr = state.trades.slice().sort(function (x, y) {
+      return x.date < y.date ? -1 : x.date > y.date ? 1 : (x.created || '') < (y.created || '') ? -1 : 1;
+    });
+    var P = {}, rows = [], vNow = state.settings.px.VOO || (last('VOO') || {}).p;
+    tr.forEach(function (x) {
+      var r = resolve(x), row = { x: x, r: r };
+      var c = at(x.asset, x.date);
+      row.rule = x.rule != null ? x.rule : c ? c.l : null;
+      rows.push(row);
+      if (r.err) return;
+      var s = P[x.asset] || (P[x.asset] = { a: x.asset, c: cur(x.asset), q: 0, cost: 0, real: 0, inv: 0, proc: 0, vsh: 0, vproc: 0, vok: cur(x.asset) === 'USD' && !!vNow, est: false, realKrw: 0, sales: [] });
+      if (r.est) s.est = true;
+      var fee = num(x.fee) || 0, v = at('VOO', x.date);
+      if (!v) s.vok = false;
+      if (x.side === 'sell') {
+        if (s.q <= 1e-12) { row.r = { err: t('팔 수량이 없습니다(이 날짜 전 보유 0)', 'nothing held before this date') }; return; }
+        var q = r.q;
+        if (q > s.q + 1e-9) { row.warn = t('보유보다 많이 팔아 보유 수량까지만 반영', 'sold more than held — capped at holding'); q = s.q; }
+        var avg = s.cost / s.q, proceeds = q * r.p - fee, frac = q / s.q;
+        var gain = proceeds - q * avg;
+        s.real += gain; s.cost -= q * avg; s.proc += proceeds; s.q -= q;
+        if (s.c === 'USD') { // 매도일 환율로 원화 환산(없으면 현재 환율)
+          var f = fxAt(x.date) || fxNow();
+          if (f) s.realKrw += gain * f.r;
+          s.sales.push({ d: x.date, g: gain, f: f });
+        } else s.realKrw += gain;
+        if (s.vok) { var vs = s.vsh * frac; s.vproc += vs * v.p; s.vsh -= vs; }
+        if (s.q < 1e-12) { s.q = 0; s.cost = 0; }
+      } else {
+        var paid = r.q * r.p + fee;
+        s.q += r.q; s.cost += paid; s.inv += paid;
+        if (s.vok) s.vsh += paid / v.p;
+      }
+    });
+    var list = Object.keys(P).map(function (a) {
+      var s = P[a], o = num(state.settings.px[a]), L = last(a);
+      s.now = o > 0 ? o : L ? L.p : null; s.nowd = o > 0 ? null : L ? L.d : null;
+      s.value = s.now != null ? s.q * s.now : null;
+      s.unreal = s.value != null ? s.value - s.cost : null;
+      s.upct = s.cost > 0 && s.unreal != null ? s.unreal / s.cost * 100 : null;
+      s.total = s.value != null ? s.value + s.proc - s.inv : null;
+      s.tpct = s.inv > 0 && s.total != null ? s.total / s.inv * 100 : null;
+      if (s.vok && s.inv > 0 && s.tpct != null) { var b = (s.vsh * vNow + s.vproc - s.inv) / s.inv * 100; s.vs = s.tpct - b; } else s.vs = null;
+      return s;
+    }).filter(function (s) { return s.q > 0 || Math.abs(s.real) > 1e-9; });
+    list.sort(function (x, y) { return x.c === y.c ? (y.value || 0) - (x.value || 0) : x.c < y.c ? 1 : -1; });
+    return { rows: rows, list: list };
+  }
+
+  // ---- 그리기 ----
+  function renderMode() {
+    var el = $('pmode'), n = state.trades.length;
+    if (state.mode === 'local') {
+      el.className = 'pmode';
+      el.innerHTML = '<b>●</b>' + t('로컬 파일 private/trades.csv · ' + n + '건 · 이 컴퓨터에만 있습니다. 고치려면 CSV를 수정하고 python3 docs/build_case_study.py 를 다시 실행하세요',
+        'local file private/trades.csv · ' + n + ' trades · on this machine only. Edit the CSV and rerun python3 docs/build_case_study.py');
+    } else if (state.mode === 'db') {
+      el.className = 'pmode';
+      el.innerHTML = '<b>●</b>' + t('내 기록 ' + n + '건 · 이 페이지의 개인 저장 공간에 있어 공유받은 사람도 볼 수 없습니다',
+        'my ledger · ' + n + ' trades · stored in your private space on this page — people it is shared with cannot see it');
+    } else {
+      el.className = 'pmode demo';
+      el.innerHTML = '<b>●</b>' + (state.mode === 'loading'
+        ? t('불러오는 중', 'loading')
+        : t('이 페이지는 기록을 저장하지 않습니다 · 입력하면 계산만 해 보고, 새로고침하면 사라집니다', 'this page stores nothing · entries are calculated in place and vanish on reload'));
+    }
+  }
+
+  function renderKpi(list) {
+    var by = {};
+    list.forEach(function (s) {
+      var b = by[s.c] || (by[s.c] = { cost: 0, value: 0, unreal: 0, real: 0, total: 0, inv: 0 });
+      b.cost += s.cost; b.value += s.value || 0; b.unreal += s.unreal || 0; b.real += s.real; b.total += s.total || 0; b.inv += s.inv;
+    });
+    var html = '';
+    ['USD', 'KRW'].forEach(function (c) {
+      var b = by[c]; if (!b) return;
+      html += '<div><span class="cur">' + c + '</span><span class="tot ' + tone(b.unreal) + '">' + signed(b.unreal, c) +
+        ' <small>' + pct(b.cost > 0 ? b.unreal / b.cost * 100 : null) + '</small></span><dl>' +
+        '<dt>' + t('평가금액', 'market value') + '</dt><dd>' + money(b.value, c) + '</dd>' +
+        '<dt>' + t('남은 원금', 'cost basis') + '</dt><dd>' + money(b.cost, c) + '</dd>' +
+        '<dt>' + t('실현손익', 'realized') + '</dt><dd class="' + tone(b.real) + '">' + signed(b.real, c) + '</dd>' +
+        '<dt>' + t('총손익(실현+평가)', 'total P&amp;L') + '</dt><dd class="' + tone(b.total) + '">' + signed(b.total, c) + ' · ' + pct(b.inv > 0 ? b.total / b.inv * 100 : null) + '</dd></dl></div>';
+    });
+    if (by.USD) { // 원화 환산 합계: 실현손익은 매도일 환율, 평가는 현재 환율
+      var fn = fxNow(), sales = [], rUsdK = 0, rK = by.KRW ? by.KRW.real : 0;
+      list.forEach(function (s) { if (s.c === 'USD') { rUsdK += s.realKrw; sales = sales.concat(s.sales.map(function (x) { x.a = s.a; return x; })); } });
+      var rTot = rUsdK + rK, rows = '';
+      sales.sort(function (x, y) { return x.d < y.d ? -1 : 1; }).forEach(function (x) {
+        rows += '<dt>' + esc(x.a) + ' ' + t('매도', 'sold') + ' ' + x.d.slice(2).replace(/-/g, '/') + '</dt><dd class="' + tone(x.g) + '">' + (x.f ? signed(x.g * x.f.r, 'KRW') : '—') +
+          '<i class="sub blk">' + signed(x.g, 'USD') + (x.f ? ' × ' + x.f.r.toLocaleString('en-US', { minimumFractionDigits: 2 }) : '') + '</i></dd>';
+      });
+      if (by.KRW) rows += '<dt>' + t('원화 종목 실현', 'KRW realized') + '</dt><dd class="' + tone(rK) + '">' + signed(rK, 'KRW') + '</dd>';
+      if (fn) {
+        var u = (by.KRW ? by.KRW.unreal : 0) + by.USD.unreal * fn.r, v = (by.KRW ? by.KRW.value : 0) + by.USD.value * fn.r;
+        rows += '<dt>' + t('평가손익 합계', 'unrealized, total') + '</dt><dd class="' + tone(u) + '">' + signed(u, 'KRW') + '</dd>' +
+          '<dt>' + t('평가금액 합계', 'market value, total') + '</dt><dd>' + money(v, 'KRW') + '</dd>' +
+          '<dt>' + t('현재 환율', 'FX now') + '</dt><dd>' + fn.r.toLocaleString('en-US', { minimumFractionDigits: 2 }) + ' ' + (fn.d ? '<i class="sub">' + fn.d.slice(5).replace('-', '/') + '</i>' : '<i class="sub amb">' + t('직접', 'manual') + '</i>') + '</dd>';
+      }
+      html += '<div class="kr"><span class="cur">' + t('원화 환산 · 실현손익 합계', 'in KRW · realized, total') + '</span><span class="tot ' + tone(rTot) + '">' + signed(rTot, 'KRW') + '</span><dl>' + rows + '</dl>' +
+        '<p class="fxn">' + t('달러 실현손익은 매도일 환율로 환산했습니다. 매수·매도 사이 환율 변동(환차손익)은 넣지 않아 세금 계산 기준과 다를 수 있습니다.',
+          'USD gains are converted at the sale-date rate; FX gains between buy and sell are not included, so this differs from the tax basis.') + '</p></div>';
+    }
+    $('pk').innerHTML = html || '<p class="note">' + t('아직 보유 종목이 없습니다. 위에서 첫 거래를 추가하세요.', 'No positions yet — add your first trade above.') + '</p>';
+  }
+
+  function renderPos(list) {
+    var h = '<thead><tr><th>' + t('종목', 'asset') + '</th><th>' + t('수량', 'qty') + '</th><th>' + t('평균 단가', 'avg cost') + '</th><th>' + t('현재가', 'price') +
+      '</th><th>' + t('평가금액', 'value') + '</th><th>' + t('평가손익', 'unrealized') + '</th><th>%</th><th>' + t('실현손익', 'realized') + '</th><th>' + t('VOO 대비', 'vs VOO') + '</th></tr></thead><tbody>';
+    list.forEach(function (s) {
+      var pd = s.nowd ? '<i class="sub">' + s.nowd.slice(5).replace('-', '/') + '</i>' : '<i class="sub amb">' + t('직접', 'manual') + '</i>';
+      h += '<tr><td>' + esc(s.a) + (s.est ? '<span class="bd">' + t('추정', 'est') + '</span>' : '') + '</td>' +
+        '<td>' + (s.q > 0 ? qty(s.q) : '<span class="dim">' + t('청산', 'closed') + '</span>') + '</td>' +
+        '<td>' + (s.q > 0 ? money(s.cost / s.q, s.c) : '—') + '</td><td>' + money(s.now, s.c) + ' ' + pd + '</td>' +
+        '<td>' + (s.q > 0 ? money(s.value, s.c) : '—') + '</td><td class="' + tone(s.unreal) + '">' + (s.q > 0 ? signed(s.unreal, s.c) : '—') + '</td>' +
+        '<td class="' + tone(s.unreal) + '">' + (s.q > 0 ? pct(s.upct) : '—') + '</td><td class="' + tone(s.real) + '">' + signed(s.real, s.c) + '</td>' +
+        '<td class="' + tone(s.vs) + '">' + (s.vs == null ? '—' : (s.vs > 0 ? '+' : s.vs < 0 ? '−' : '') + Math.abs(s.vs).toFixed(1) + 'pp') + '</td></tr>';
+    });
+    $('ptab').innerHTML = h + '</tbody>';
+    $('pwrap').hidden = !list.length;
+  }
+
+  function renderTrades(rows) {
+    var h = '<thead><tr><th>' + t('날짜', 'date') + '</th><th>' + t('종목', 'asset') + '</th><th class="l">' + t('구분', 'side') + '</th><th>' + t('수량', 'qty') + '</th><th>' + t('단가', 'price') +
+      '</th><th>' + t('금액', 'amount') + '</th><th class="l">' + t('그날 규칙', 'rule that day') + '</th><th class="l">' + t('메모', 'memo') + '</th><th></th></tr></thead><tbody>';
+    rows.slice().reverse().forEach(function (row) {
+      var x = row.x, r = row.r, c = cur(x.asset), sell = x.side === 'sell';
+      var side = '<span class="' + (sell ? 'dn' : 'up') + '">' + (sell ? t('매도', 'SELL') : t('매수', 'BUY')) + '</span>';
+      var del = x.id ? '<button type="button" class="xb" data-del="' + esc(x.id) + '">' + t('삭제', 'delete') + '</button>' : '';
+      if (r.err) {
+        h += '<tr class="bad"><td>' + esc(x.date) + '</td><td>' + esc(x.asset) + '</td><td class="l">' + side + '</td><td class="l" colspan="5">' + r.err + '</td><td>' + del + '</td></tr>';
+        return;
+      }
+      h += '<tr><td>' + esc(x.date) + '</td><td>' + esc(x.asset) + '</td><td class="l">' + side + '</td><td>' + qty(r.q) + (num(x.qty) == null ? '<span class="bd">' + t('계산', 'calc') + '</span>' : '') +
+        '</td><td>' + money(r.p, c) + (r.est ? '<span class="bd">' + t('종가 추정', 'close est') + '</span>' : '') + '</td><td>' + money(r.q * r.p, c) +
+        '</td><td class="l">' + rule(row.rule) + '</td><td class="l memo">' + esc(x.memo || '') + (row.warn ? ' <span class="amb">' + row.warn + '</span>' : '') + '</td><td>' + del + '</td></tr>';
+    });
+    $('ttab').innerHTML = h + '</tbody>';
+    $('tcount').textContent = rows.length + ' rows';
+  }
+
+  function renderOverrides(list) {
+    var held = list.filter(function (s) { return s.q > 0; });
+    var h = '<label>' + t('환율 USD→KRW', 'FX USD→KRW') + '<input type="number" step="any" min="0" inputmode="decimal" data-fx value="' + esc(state.settings.fx || '') + '" placeholder="' + (FX ? FX.c[FX.c.length - 1] : '') + '"></label>';
+    held.forEach(function (s) {
+      var L = last(s.a);
+      h += '<label>' + esc(s.a) + ' ' + t('현재가', 'price') + '<input type="number" step="any" min="0" inputmode="decimal" data-px="' + esc(s.a) + '" value="' + esc(state.settings.px[s.a] || '') + '" placeholder="' + (L ? L.p : '') + '"></label>';
+    });
+    var box = $('povr'), f = document.activeElement;
+    if (box.contains(f)) return; // 입력 중에는 다시 그리지 않는다
+    box.innerHTML = h;
+  }
+
+  // ---- 인사이트: 원화 기준으로 한 번에 읽는 요약 ----
+  function kor(v) {
+    var a = Math.abs(v), e = Math.floor(a / 1e8), m = Math.round((a % 1e8) / 1e4);
+    if (m === 10000) { e++; m = 0; }
+    var o = (e ? e + '억 ' : '') + (m ? m.toLocaleString('en-US') + '만' : '');
+    return (v < 0 ? '−' : '') + (o.trim() || '0') + ' 원';
+  }
+  function mil(v) { return (v < 0 ? '−' : '') + '₩' + (Math.abs(v) / 1e6).toFixed(1) + 'M'; }
+  function both(v) { return t('약 ' + kor(v), '≈ ' + mil(v)); }
+  function renderInsight(list) {
+    var box = $('pins');
+    if (!list.length) { box.hidden = true; return; }
+    var fn = fxNow(), hasUsd = list.some(function (s) { return s.c === 'USD'; });
+    if (hasUsd && !fn) { box.hidden = true; return; }
+    var fx = fn ? fn.r : 1, real = 0, value = 0, cost = 0, usdVal = 0, held = [], realParts = [];
+    list.forEach(function (s) {
+      var k = s.c === 'USD' ? fx : 1;
+      real += s.realKrw;
+      if (Math.abs(s.realKrw) > 0.5) realParts.push(esc(s.a) + ' ' + signed(s.realKrw, 'KRW'));
+      if (s.q > 0 && s.value != null) {
+        value += s.value * k; cost += s.cost * k;
+        if (s.c === 'USD') usdVal += s.value;
+        var L = A[s.a]; held.push({ a: s.a, v: s.value * k, l: L ? L.l[L.l.length - 1] : null });
+      }
+    });
+    var unreal = value - cost, total = real + unreal;
+    held.sort(function (x, y) { return y.v - x.v; });
+    var li = [];
+    li.push(['실현', 'realized', t('지금까지 판 거래에서 확정된 이익은 <b class="' + tone(real) + '">' + signed(real, 'KRW') + '</b>(' + kor(real) + ')입니다.',
+      'Gains locked in by past sales total <b class="' + tone(real) + '">' + signed(real, 'KRW') + '</b>.') +
+      (realParts.length ? ' <span class="sub">' + realParts.join(' · ') + '</span>' : '')]);
+    if (held.length) {
+      li.push(['전부 정리', 'if sold', t('지금 가진 것을 현재가·현재 환율로 모두 팔면 <b>' + money(value, 'KRW') + '</b>(' + kor(value) + ')을 받습니다. 그중 <b class="' + tone(unreal) + '">' + signed(unreal, 'KRW') + '</b>는 아직 확정되지 않은 이익으로, 남은 원금 ' + money(cost, 'KRW') + ' 대비 ' + pct(cost > 0 ? unreal / cost * 100 : null) + '입니다.',
+        'Selling everything at current prices and FX would bring in <b>' + money(value, 'KRW') + '</b>; <b class="' + tone(unreal) + '">' + signed(unreal, 'KRW') + '</b> of that is unrealized gain, ' + pct(cost > 0 ? unreal / cost * 100 : null) + ' on remaining cost.')]);
+      li.push(['총이익', 'total', t('확정 이익까지 합친 총이익은 <b class="' + tone(total) + '">' + signed(total, 'KRW') + '</b>(' + kor(total) + ')입니다.',
+        'Realized plus unrealized: <b class="' + tone(total) + '">' + signed(total, 'KRW') + '</b> (' + mil(total) + ').')]);
+      var top = held[0], share = value > 0 ? top.v / value * 100 : 0;
+      if (held.length > 1 || share < 100) li.push(['집중도', 'concentration', t('보유 금액의 <b>' + share.toFixed(1) + '%</b>가 ' + esc(top.a) + ' 한 종목입니다.' + (share >= 50 ? ' 이 종목의 움직임이 전체 손익을 거의 결정합니다.' : ''),
+        '<b>' + share.toFixed(1) + '%</b> of holdings is ' + esc(top.a) + (share >= 50 ? ', so it drives most of the P&amp;L.' : '.'))]);
+      else li.push(['집중도', 'concentration', t('보유 금액 전부가 ' + esc(top.a) + ' 한 종목입니다.', 'All holdings are in ' + esc(top.a) + '.')]);
+      if (usdVal > 0) li.push(['환율', 'FX', t('달러 자산이 ' + money(usdVal, 'USD') + '라 환율이 10원 오르내리면 원화 평가액이 약 <b>' + money(usdVal * 10, 'KRW') + '</b> 바뀝니다.',
+        'With ' + money(usdVal, 'USD') + ' in USD assets, a ₩10 move in USD/KRW shifts the KRW value by about <b>' + money(usdVal * 10, 'KRW') + '</b>.')]);
+      li.push(['규칙 판단', 'rule now', t('이 프로젝트 판단 규칙의 최신 판단: ', 'Latest call from this project\'s rule: ') + held.map(function (h) { return esc(h.a) + ' ' + rule(h.l); }).join(' · ') +
+        ' <span class="sub">' + t('규칙 기준 참고, 투자 권유 아님', 'reference only, not advice') + '</span>']);
+    }
+    box.innerHTML = '<div class="ih"><span class="cur">' + t('인사이트 · 원화 기준', 'insights · in KRW') + '</span><span class="sub">' +
+      (fn ? t('환율 ', 'FX ') + fn.r.toLocaleString('en-US', { minimumFractionDigits: 2 }) + (fn.d ? ' (' + fn.d.slice(5).replace('-', '/') + ')' : t(' (직접 입력)', ' (manual)')) + ' · ' : '') +
+      t('세금·수수료 전', 'before tax &amp; fees') + '</span></div><ul>' +
+      li.map(function (x) { return '<li><span class="il">' + t(x[0], x[1]) + '</span><span class="ix">' + x[2] + '</span></li>'; }).join('') + '</ul>';
+    box.hidden = false;
+  }
+
+  function render() {
+    var out = compute();
+    renderMode(); renderInsight(out.list); renderKpi(out.list); renderPos(out.list); renderTrades(out.rows); renderOverrides(out.list);
+  }
+
+  // ---- 저장 ----
+  function msg(html, cls) { var m = $('pmsg'); m.className = 'pmsg ' + (cls || ''); m.innerHTML = html; }
+  function failMsg(e) {
+    var c = e && e.code;
+    if (c === 'invalid_argument') return t('이 계정에서는 저장할 수 없습니다(보기 권한이거나 개인 공간이 없음)', 'this account cannot save here (view-only or no private space)');
+    if (c === 'quota_exceeded') return t('저장 공간이 가득 찼습니다. 오래된 기록을 지워 주세요', 'storage is full — delete old rows');
+    return t('저장하지 못했습니다. 잠시 뒤 다시 시도해 주세요', 'could not save — try again shortly');
+  }
+  var pending = Promise.resolve(), timer = null;
+  function saveSettings() {
+    clearTimeout(timer);
+    timer = setTimeout(function () {
+      if (!store) { render(); return; }
+      var body = JSON.parse(JSON.stringify(state.settings));
+      pending = pending.then(function () { return store.settings.set(body); }).catch(function (e) { msg(failMsg(e), 'err'); });
+    }, 600);
+  }
+
+  $('pf').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var f = ev.target, x = {
+      date: f.date.value, asset: f.asset.value, side: f.side.value,
+      qty: num(f.qty.value), price: num(f.price.value), amount: num(f.amount.value), fee: num(f.fee.value), memo: f.memo.value.trim().slice(0, 200)
+    };
+    if (!x.date || !x.asset) return msg(t('날짜와 종목을 골라 주세요', 'pick a date and an asset'), 'err');
+    if (x.date > today()) return msg(t('미래 날짜는 넣을 수 없습니다', 'date is in the future'), 'err');
+    if (x.qty == null && x.amount == null) return msg(t('수량이나 금액 중 하나는 적어야 합니다', 'enter a quantity or an amount'), 'err');
+    var r = resolve(x);
+    if (r.err) return msg(r.err, 'err');
+    x.created = new Date().toISOString();
+    var reset = function () { f.qty.value = f.price.value = f.amount.value = f.fee.value = f.memo.value = ''; };
+    if (!store) {
+      x.id = 'local-' + Date.now(); state.trades.push(x); reset(); render();
+      return msg(t('추가했습니다(예시 화면이라 저장되지 않음)', 'added (example view — not saved)'), 'ok');
+    }
+    var clean = {}; Object.keys(x).forEach(function (k) { if (x[k] !== null && x[k] !== '') clean[k] = x[k]; });
+    msg(t('저장 중…', 'saving…'));
+    store.col.add(clean).then(function () { reset(); msg(t('저장했습니다', 'saved'), 'ok'); }, function (e) { msg(failMsg(e), 'err'); });
+  });
+
+  $('ttab').addEventListener('click', function (ev) {
+    var b = ev.target.closest('[data-del]'); if (!b) return;
+    if (!b.classList.contains('arm')) {
+      b.classList.add('arm'); b.innerHTML = t('확인', 'confirm');
+      setTimeout(function () { if (b.isConnected) { b.classList.remove('arm'); b.innerHTML = t('삭제', 'delete'); } }, 3000);
+      return;
+    }
+    var id = b.getAttribute('data-del');
+    if (!store) { state.trades = state.trades.filter(function (x) { return x.id !== id; }); render(); return; }
+    store.col.doc(id).delete().catch(function (e) { msg(failMsg(e), 'err'); });
+  });
+
+  $('povr').addEventListener('change', function (ev) {
+    var i = ev.target, v = num(i.value);
+    if (i.hasAttribute('data-fx')) state.settings.fx = v > 0 ? v : null;
+    else if (i.hasAttribute('data-px')) { var a = i.getAttribute('data-px'); if (v > 0) state.settings.px[a] = v; else delete state.settings.px[a]; }
+    else return;
+    render(); saveSettings();
+  });
+
+  // ---- 폼 준비 ----
+  $('pf').addEventListener('click', function (ev) {
+    var b = ev.target.closest('[data-side]'); if (!b) return;
+    $('pf').side.value = b.getAttribute('data-side');
+    $('pf').querySelectorAll('[data-side]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+  });
+  var sel = $('pf').asset;
+  sel.innerHTML = NAMES.map(function (a) { return '<option value="' + esc(a) + '">' + esc(a) + ' · ' + A[a].cur + '</option>'; }).join('');
+  $('pf').date.value = today(); $('pf').date.max = today();
+  $('pxasof').textContent = PX.asof;
+  render();
+
+  // ---- 저장소 연결 (없으면 예시로 남는다) ----
+  if (window.MW_LOCAL) { // 로컬 페이지: CSV가 원본, 화면에서는 추가·삭제하지 않는다
+    state.mode = 'local'; $('pf').closest('.win').hidden = true; render(); return;
+  }
+  function demo() { state.mode = 'demo'; render(); }
+  var C = window.claude;
+  if (!C || typeof C.use !== 'function') return demo();
+  Promise.all([C.use('db'), C.use('user')]).then(function (cap) {
+    var db = cap[0], user = cap[1];
+    if (!db || !user) return demo();
+    return user.id().then(function (uid) {
+      if (!uid) return demo();
+      var base = 'data/users/' + uid;
+      store = { col: db.doc(base + '/book').collection('trades'), settings: db.doc(base + '/settings') };
+      state.mode = 'db'; state.trades = []; render();
+      store.col.onSnapshot(function (snap) {
+        state.trades = snap.docs.map(function (d) { var o = Object.assign({}, d.data()); o.id = d.id; return o; });
+        render();
+      }, function (e) { store = null; state.mode = 'demo'; state.trades = DEMO.slice(); render(); msg(failMsg(e), 'err'); });
+      store.settings.onSnapshot(function (d) {
+        if (!d.exists) return;
+        var s = d.data() || {};
+        state.settings = { fx: s.fx || null, px: Object.assign({}, s.px || {}) };
+        render();
+      }, function () {});
+    });
+  }).catch(demo);
+})();
+
+</script>
+<script>
+(function(){
+  var root=document.documentElement,btn=document.getElementById('lang');
+  function set(l){root.setAttribute('data-lang',l);root.setAttribute('lang',l);try{localStorage.setItem('mw-lang',l)}catch(e){}}
+  var saved=null;try{saved=localStorage.getItem('mw-lang')}catch(e){}
+  set(saved==='en'?'en':'ko');
+  btn.addEventListener('click',function(){set(root.getAttribute('data-lang')==='en'?'ko':'en')});
+})();
+</script>
+</body>
+</html>

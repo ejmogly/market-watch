@@ -1,0 +1,9 @@
+{
+ "snapshot_at_utc": "2026-09-27T13:10:00Z",
+ "runs": 26,
+ "source": "RemoteTrigger list_runs + get_run_log (읽기 전용). not_fetched 7건은 목록 시각만",
+ "guardrail_times_utc": {
+  "push_block_email_rule": "2026-09-26T12:45:00Z",
+  "agent_block": "2026-09-27T01:57:00Z"
+ }
+}
