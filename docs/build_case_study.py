@@ -85,6 +85,11 @@ E = inp["eval"]
 recall_full = E["rows"][-1]["recall"].split(" ")[0]
 recall_hold = E["holdout"]["rows"][-1]["recall"].split(" ")[0]
 viol_before = g["push_before"][0] + g["company_email_before"][0] + g["agent_before"][0]
+viol_after = g["push_after"][0] + g["company_email_after"][0] + g["agent_after"][0]
+err_cls = json.load(open(M / "verdict_error_classes.json"))   # ERROR 행 분류(검증 메모를 사람이 읽고 나눔)
+err_rows = [v for v in verd if v["verdict"] == "ERROR"]
+err_num = sum(1 for v in err_rows if err_cls.get(v["title"]) == "수치")
+period = f"{ops['period_from']} ~ {ops['period_to']}"
 
 ratios = {}
 for line in open(M / "events_summary.md"):
@@ -142,7 +147,7 @@ def kst(s):
 
 
 log_lines = []
-for r in sorted(runs, key=lambda r: r["created_at"]):
+for r in sorted((r for r in runs if r["result_status"] != "not_fetched"), key=lambda r: r["created_at"]):   # 로그를 읽은 실행만 보여 준다
     t = kst(r["created_at"])
     tag = {"success": ("ok", "OK"), "not_fetched": ("dim", "--")}.get(r["result_status"], ("bad", "ERR"))
     flags = []
@@ -170,15 +175,20 @@ sched_html = "".join(
 hours = "".join(f'<span class="hr" style="left:{h / 24 * 100:.2f}%">{h:02d}</span>' for h in range(0, 25, 3))
 
 # ---------- 판정 추이 ----------
-vc = Counter(("-".join(v["title"].split("-")[1:4]), v["mode"], v["verdict"]) for v in verd)
+def week_of(day):
+    d = datetime.strptime(day, "%Y-%m-%d")
+    return (d - timedelta(days=d.weekday())).strftime("%Y-%m-%d")
+
+
+vc = Counter((week_of("-".join(v["title"].split("-")[1:4])), v["mode"], v["verdict"]) for v in verd)   # 작성일이 속한 주(월요일) 기준
 vkeys = sorted({(d, m) for d, m, _ in vc})
 
 
 def vrow(d, m):
     segs = "".join(f'<span class="{c}" style="flex:{n}">{n}</span>'
-                   for n, c in ((vc.get((d, m, "PASS"), 0), "p"), (vc.get((d, m, "WARNING"), 0), "w"), (vc.get((d, m, "ERROR"), 0), "e")) if n)
+                   for n, c in ((vc.get((d, m, "PASS"), 0), "p"), (vc.get((d, m, "WARNING"), 0), "w"), (vc.get((d, m, "NEED MORE INFO"), 0), "n"), (vc.get((d, m, "ERROR"), 0), "e")) if n)
     mode = T("수동", "manual") if m == "수동" else T("예약", "sched")
-    return f'<div class="vrow"><span class="vd">{d[5:].replace("-", "/")} {mode}</span><span class="vb">{segs}</span></div>'
+    return f'<div class="vrow"><span class="vd">{d[5:].replace("-", "/")} {T("주", "wk")} {mode}</span><span class="vb">{segs}</span></div>'
 
 
 vbars = "".join(vrow(d, m) for d, m in vkeys)
@@ -348,12 +358,12 @@ page = f"""<title>market-watch 사례 연구</title>
     "Ten scheduled cloud routines <b>research → verify → summarize</b> 14 assets into Notion. This page is less about the fact that it runs and more about <b>what was measured and what turned up</b>.")}</p>
   <div class="kp">
     <div><span class="k">{T("검증 검출률", "verifier recall")}</span><span class="v c-cy">{recall_full}</span><span class="c">{T(f"처음 보는 행 {recall_hold} · 오탐 0", f"unseen rows {recall_hold} · 0 false alarms")}</span></div>
-    <div><span class="k">{T("예약 실행", "scheduled runs")}</span><span class="v c-up">{ops['scheduled_success']}<small>/{ops['scheduled_runs']}</small></span><span class="c">{T(f"시작 지연 중앙값 {ops['start_delay_min_median']}분", f"median start delay {ops['start_delay_min_median']} min")}</span></div>
-    <div><span class="k">{T("가드레일 뒤 위반", "violations after fix")}</span><span class="v c-up">0</span><span class="c">{T(f"적용 전 {viol_before}건", f"{viol_before} before")}</span></div>
+    <div><span class="k">{T("예약 실행", "scheduled runs")}</span><span class="v c-up">{ops['scheduled_success']}<small>/{ops['scheduled_log_read']}</small></span><span class="c">{T(f"로그 읽은 실행만, 전체 {ops['scheduled_runs']}회, 시작 지연 중앙값 {ops['start_delay_min_median']}분", f"runs with logs read, {ops['scheduled_runs']} in all, median start delay {ops['start_delay_min_median']} min")}</span></div>
+    <div><span class="k">{T("가드레일 뒤 위반", "violations after fix")}</span><span class="v {'c-up' if viol_after == 0 else 'c-amb'}">{viol_after}</span><span class="c">{T(f"적용 전 {viol_before}건, 로그 읽은 실행만", f"{viol_before} before, runs with logs read")}</span></div>
     <div><span class="k">{T("낙폭 줄인 자산", "lower drawdown")}</span><span class="v c-amb">{shallow}<small>/{n_assets}</small></span><span class="c">{T(f"수익 우위는 {beat}/{n_assets}", f"higher return only {beat}/{n_assets}")}</span></div>
     <div><span class="k">{T("재계산 일치", "recomputed match")}</span><span class="v c-vi">{ev_match}<small>/{len(ev_db)}</small></span><span class="c">{T("이벤트 반응 행", "event reaction rows")}</span></div>
   </div>
-  <p class="note">{T(f"스냅숏 {snap} · 운영 데이터 이틀치 초기값 · 투자 권유 아님", f"snapshot {snap} · two days of ops data, early numbers · not investment advice")}</p>
+  <p class="note">{T(f"스냅숏 {snap}, 운영 기간 {period}({ops['period_days']}일), 투자 권유 아님", f"snapshot {snap}, ops data {ops['period_from']} to {ops['period_to']} ({ops['period_days']} days), not investment advice")}</p>
 </header>
 
 <section id="arch">
@@ -391,19 +401,19 @@ page = f"""<title>market-watch 사례 연구</title>
       <div class="leg"><span><b class="gc hit">●</b>{T("잡음", "caught")}</span><span><b class="gc miss">○</b>{T("놓침", "missed")}</span><span><b class="gc ok">✓</b>{T("정상 통과", "clean pass")}</span><span><b class="gc fa">!</b>{T("오탐", "false alarm")}</span></div>
     </div></div>
   </div>
-  <div class="win"><div class="wt"><span>Market Daily · {T("실제 운영 판정", "production verdicts")}</span><span>22 rows</span></div><div class="wb">
+  <div class="win"><div class="wt"><span>Market Daily · {T("실제 운영 판정", "production verdicts")}</span><span>{len(verd)} rows</span></div><div class="wb">
     <div class="vl">{vbars}</div>
-    <div class="leg"><span><b class="gc" style="background:var(--up)"></b>PASS</span><span><b class="gc" style="background:var(--amb)"></b>WARNING</span><span><b class="gc" style="background:var(--dn)"></b>ERROR</span></div>
-    <p class="note">{T("9/26 ERROR 4건은 수치가 아니라 출처 표기 누락과 뉴스 게재일 오기였고, 규칙을 고친 다음 날 행은 모두 PASS였습니다.", "The four ERRORs on 9/26 were a missing source note and a wrong news date, not numbers; after the rule fix, next-day rows all passed.")}</p>
+    <div class="leg"><span><b class="gc" style="background:var(--up)"></b>PASS</span><span><b class="gc" style="background:var(--amb)"></b>WARNING</span><span><b class="gc" style="background:var(--dn)"></b>ERROR</span><span><b class="gc" style="background:var(--vi)"></b>NEED MORE INFO</span></div>
+    <p class="note">{T(f"9/26 ERROR 4건은 수치가 아니라 출처 표기 누락과 뉴스 게재일 오기였습니다. 스냅숏까지 ERROR는 모두 {len(err_rows)}건이고, 검증 메모 기준으로 지표나 뉴스 숫자가 틀린 행은 {err_num}건입니다(BTC와 ETH의 52주 최고와 ATR, SpaceX 뉴스 매출).", f"The four ERRORs on 9/26 were a missing source note and a wrong news date, not numbers. Through the snapshot there are {len(err_rows)} ERRORs in all; by the verifier's notes {err_num} had a wrong figure (BTC and ETH 52-week high and ATR, a SpaceX revenue number in the news text).")}</p>
   </div></div>
 </section>
 
 <section id="ops">
   <div class="sh"><span class="idx">03 / {T("운영", "operations")}</span><h2>{T("사고는 규칙 문장이 아니라 권한과 검사로 막았다", "Incidents were closed with permissions and checks, not more prose")}</h2>
-  <p>{T(f"루틴 실행 {ops['runs_total']}회를 장부로 모았습니다({ops['runs_log_read']}회는 로그 전체 확인). 적용 뒤 표본은 작아서 '재발 없음'이 아니라 '아직 관측되지 않음'으로 읽어야 합니다.",
-    f"{ops['runs_total']} routine runs went into a ledger ({ops['runs_log_read']} logs read in full). The post-fix sample is small: read it as 'not yet observed', not 'never again'.")}</p></div>
+  <p>{T(f"루틴 실행 {ops['runs_total']}회를 장부로 모았습니다. 로그를 읽은 것은 {ops['runs_log_read']}회이고 나머지는 목록 시각만 있어, 아래 전후 비교는 읽은 실행만 셉니다. '재발 없음'이 아니라 '읽은 실행에서 아직 관측되지 않음'으로 읽어야 합니다. 직전 스냅숏 뒤 예약 {ops['fires_check']['expected']}회는 누락 {ops['fires_check']['missing']}회로 세션이 시작됐지만, 세션 정상 종료는 작업 완료와 다릅니다. 읽은 실행 중 {ops['scheduled_stopped']}회는 시세 수집이 실패해 아무것도 쓰지 않고 멈췄는데도 정상 종료로 남았습니다.",
+    f"{ops['runs_total']} routine runs went into a ledger. Logs were read for {ops['runs_log_read']}; the rest have list timestamps only, so the before/after counts below cover the runs that were read. Read them as 'not observed in the runs read', not 'never again'. Since the previous snapshot, {ops['fires_check']['expected']} scheduled fires started with {ops['fires_check']['missing']} missing, but a clean session end is not a finished job: {ops['scheduled_stopped']} of the runs read stopped after a price fetch failed, wrote nothing, and still ended as success.")}</p></div>
   <div class="diffs">{diffs}</div>
-  <div class="win"><div class="wt"><span>tail -n {len(runs)} metrics/runs.jsonl</span><span>KST</span></div><div class="wb log">{"".join(log_lines)}</div></div>
+  <div class="win"><div class="wt"><span>grep -v not_fetched metrics/runs.jsonl</span><span>KST</span></div><div class="wb log">{"".join(log_lines)}</div></div>
   <div class="stats">
     <div><b>47</b><span>{T("분류한 이슈 (09-24~27)", "issues classified (09-24~27)")}</span></div>
     <div><b>55%</b><span>{T("검증 담당이 먼저 잡음 (발견자 확인 33건)", "caught first by the verifier (33 with known finder)")}</span></div>
@@ -418,7 +428,7 @@ page = f"""<title>market-watch 사례 연구</title>
   <div class="sh"><span class="idx">04 / {T("발견", "findings")}</span><h2>{T("판단 규칙은 수익 신호가 아니라 위험 관리 도구였다", "The trading rule was a risk control, not a return signal")}</h2>
   <p>{T(f"매일의 판단 뒤 60일을 겹쳐 세면 <b>'비중 축소' 뒤가 가장 좋아</b> 규칙이 거꾸로 작동하는 것처럼 보였습니다. 겹치지 않는 창으로 다시 뽑자 차이는 신뢰구간 안에서 사라졌습니다. 규칙을 비중으로 쓰면 수익은 {n_assets - beat}개 자산에서 줄었지만 낙폭은 {shallow}개 자산에서 얕아졌습니다.",
     f"Counting overlapping 60-day windows made <b>'REDUCE' look like the best entry</b> — as if the rule worked backwards. With non-overlapping windows the gap vanished inside the confidence intervals. Used as position sizing, the rule lowered return on {n_assets - beat} assets but reduced max drawdown on {shallow}.")}</p></div>
-  <div class="win"><div class="wt"><span>{T("최대 낙폭 · 보유 vs 규칙", "max drawdown · hold vs rule")}</span><span>2025-01 → 2026-09</span></div><div class="wb ch">{mdd_chart()}</div></div>
+  <div class="win"><div class="wt"><span>{T("최대 낙폭 · 보유 vs 규칙", "max drawdown · hold vs rule")}</span><span>{min(a["from"] for a in assets.values())[:7]} → {max(a["to"] for a in assets.values())[:7]}</span></div><div class="wb ch">{mdd_chart()}</div></div>
   <div class="two">
       <div class="win"><div class="wt"><span>{T("판단별 60일 뒤 · 90% 구간", "60d forward · 90% CI")}</span><span>bootstrap 2000</span></div><div class="wb ch">{ci_chart()}</div></div>
       <div class="win"><div class="wt"><span>{T("실적 다음 날 움직임 ÷ 평소 하루", "day-after-earnings move ÷ typical day")}</span><span>US · KR</span></div><div class="wb ch">{ratio_chart()}</div></div>
@@ -436,7 +446,7 @@ page = f"""<title>market-watch 사례 연구</title>
 <section>
   <div class="sh"><span class="idx">06 / {T("한계", "limits")}</span><h2>{T("아직 말할 수 없는 것", "What this can't claim yet")}</h2></div>
   <ul class="lim">
-    <li>{T("운영 데이터가 이틀치입니다. 성공률과 재발 여부는 아직 다시 재지 않았습니다.", "Two days of operations data; success and recurrence have not been re-measured yet.")}</li>
+    <li>{T(f"운영 기록은 {period}의 실행 {ops['runs_total']}회입니다. 로그를 읽은 것은 {ops['runs_log_read']}회뿐이고 무작위 표본도 아니어서, 성공 여부와 재발은 읽은 실행으로만 말할 수 있습니다.", f"The ledger covers {ops['runs_total']} runs from {ops['period_from']} to {ops['period_to']}. Only {ops['runs_log_read']} logs were read, and they are not a random sample, so success and recurrence hold only for the runs read.")}</li>
     <li>{T("평가 세트는 20행+holdout 8행이라 결함 1건이 8~17%p입니다. 문장 판정은 같은 계열 모델이 합니다.", "The eval set has 20 + 8 holdout rows (one defect = 8–17 pp), and sentence-level judgments come from the same model family.")}</li>
     <li>{T("토큰·비용은 실행 로그에 나오지 않아 재지 못했습니다.", "Token cost isn't exposed in run logs, so it wasn't measured.")}</li>
     <li>{T("가격 일부는 비공식 경로에서 받았고, 모든 행에 그 사실을 적습니다. 투자 권유가 아닙니다.", "Some prices come from unofficial endpoints, flagged on every row. Not investment advice.")}</li>

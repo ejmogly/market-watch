@@ -1,12 +1,26 @@
 {
- "snapshot_at_utc": "2026-09-27T13:10:00Z",
- "runs_total": 26,
- "runs_log_read": 19,
- "scheduled_runs": 9,
- "scheduled_success": 9,
- "start_delay_min_median": 1.2,
- "start_delay_min_max": 9.9,
- "duration_s_median": 506,
+ "snapshot_at_utc": "2026-11-06T01:31:00Z",
+ "period_from": "2026-09-25",
+ "period_to": "2026-11-06",
+ "period_days": 43,
+ "runs_total": 308,
+ "runs_log_read": 47,
+ "scheduled_runs": 291,
+ "scheduled_log_read": 37,
+ "scheduled_success": 37,
+ "scheduled_stopped": 2,
+ "scheduled_no_change": 5,
+ "fires_check": {
+  "from_utc": "2026-09-27T13:10:00Z",
+  "to_utc": "2026-11-06T01:31:00Z",
+  "expected": 282,
+  "listed": 282,
+  "missing": 0,
+  "extra": 0
+ },
+ "start_delay_min_median": 3.2,
+ "start_delay_min_max": 23.7,
+ "duration_s_median": 673,
  "turns_median": 40,
  "guardrails": {
   "push_before": [
@@ -15,7 +29,7 @@
   ],
   "push_after": [
    0,
-   5
+   33
   ],
   "company_email_before": [
    3,
@@ -23,7 +37,7 @@
   ],
   "company_email_after": [
    0,
-   4
+   32
   ],
   "agent_before": [
    3,
@@ -31,54 +45,69 @@
   ],
   "agent_after": [
    0,
-   1
+   29
   ]
  },
  "by_routine": {
   "stock-desk": {
-   "runs": 2,
-   "success": 1,
-   "median_duration_s": 628
+   "runs": 31,
+   "log_read": 3,
+   "success": 3,
+   "median_duration_s": 832.0
   },
   "crypto-desk": {
-   "runs": 3,
-   "success": 2,
-   "median_duration_s": 494.0
+   "runs": 43,
+   "log_read": 4,
+   "success": 4,
+   "median_duration_s": 526.0
   },
   "etf-desk": {
-   "runs": 2,
-   "success": 1,
-   "median_duration_s": 624
+   "runs": 31,
+   "log_read": 4,
+   "success": 4,
+   "median_duration_s": 761.5
   },
   "market-verifier": {
-   "runs": 4,
-   "success": 3,
-   "median_duration_s": 592
+   "runs": 44,
+   "log_read": 5,
+   "success": 5,
+   "median_duration_s": 850.5
   },
   "kr-desk": {
-   "runs": 1,
-   "success": 1,
-   "median_duration_s": 738
+   "runs": 30,
+   "log_read": 6,
+   "success": 6,
+   "median_duration_s": 958
   },
   "weekly-brief": {
-   "runs": 3,
-   "success": 3,
-   "median_duration_s": 456
+   "runs": 8,
+   "log_read": 5,
+   "success": 5,
+   "median_duration_s": 662
   },
   "kr-verifier": {
-   "runs": 1,
-   "success": 1,
-   "median_duration_s": 668
+   "runs": 30,
+   "log_read": 5,
+   "success": 5,
+   "median_duration_s": 535
   },
   "event-desk": {
-   "runs": 5,
-   "success": 5,
-   "median_duration_s": 498
+   "runs": 44,
+   "log_read": 7,
+   "success": 7,
+   "median_duration_s": 356
   },
   "stocknews-refresh": {
-   "runs": 5,
+   "runs": 45,
+   "log_read": 6,
+   "success": 6,
+   "median_duration_s": 632
+  },
+  "monthly-brief": {
+   "runs": 2,
+   "log_read": 2,
    "success": 2,
-   "median_duration_s": 219.5
+   "median_duration_s": 583.5
   }
  }
 }
