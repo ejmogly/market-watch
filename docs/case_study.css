@@ -108,7 +108,7 @@ section{display:grid;gap:24px;scroll-margin-top:110px}
 .vrow{display:grid;grid-template-columns:118px 1fr;gap:12px;align-items:center;font:500 12.5px var(--mono)}
 .vd{color:var(--tx2)}
 .vb{display:flex;height:26px;gap:2px}.vb span{display:grid;place-items:center;font-weight:800;color:#07090d;min-width:26px;border-radius:2px}
-.vb .p{background:var(--up)}.vb .w{background:var(--amb)}.vb .e{background:var(--dn)}
+.vb .p{background:var(--up)}.vb .w{background:var(--amb)}.vb .e{background:var(--dn)}.vb .n{background:var(--vi)}
 
 /* 운영 */
 .diffs{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}

@@ -3,8 +3,8 @@
  "view_url": "https://app.notion.com/p/<NOTION_ID>?v=<NOTION_ID>",
  "view": "[루틴] Events 전체, 일자순",
  "read_mode": "notion-query-data-sources view 모드(읽기 전용), page_size 100, has_more=false",
- "read_at": "2026-09-27 21:47 KST",
- "rows": 52,
+ "read_at": "2026-11-06 10:32 KST",
+ "rows": 62,
  "fields_kept": [
   "제목",
   "종류",

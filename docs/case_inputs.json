@@ -95,12 +95,12 @@
    "what": "외부 요청 User-Agent에 회사 이메일을 지어 씀, 시키지 않은 휴대폰 알림",
    "caught": "사용자",
    "fix": "10개 루틴 disallowed_tools에 PushNotification, 연락처 규칙, stocknews는 외부 요청 전 연락처 검사",
-   "after": "적용 후 실행에서 0건",
+   "after": "적용 후 로그를 읽은 실행에서 0건",
    "state": "ok",
    "what_en": "Agent invented a company e-mail for an external API User-Agent; unrequested phone notifications",
    "caught_en": "User",
    "fix_en": "PushNotification blocked on all 10 routines, contact rule, pre-request contact check in stocknews",
-   "after_en": "0 after the fix"
+   "after_en": "0 in the runs read after the fix"
   },
   {
    "no": "23",
@@ -119,12 +119,12 @@
    "what": "Notion SQL 조회가 워크스페이스 한도에 걸려 검증 실행이 우회로를 찾아 헤맴",
    "caught": "검증 담당·Rerun 독립 검증",
    "fix": "DB마다 루틴 전용 view를 만들고 여러 행 읽기는 view 모드만 사용",
-   "after": "이후 실행에서 한도 오류 없음",
+   "after": "이후 로그를 읽은 실행에서 한도 오류 없음",
    "state": "ok",
    "what_en": "Notion SQL queries hit the workspace quota; verifier runs wandered looking for workarounds",
    "caught_en": "Verifier · independent review",
    "fix_en": "Per-DB routine views; multi-row reads use view mode only",
-   "after_en": "no quota errors since"
+   "after_en": "no quota errors since (runs read)"
   }
  ],
  "roles": [
@@ -135,14 +135,14 @@
    "bullets": [
     "담당·검증·요약·이벤트 역할을 나눈 클라우드 예약 루틴 10개를 설계하고, 검증 에이전트가 모든 수치를 원출처에서 다시 계산하게 해 오류를 사람보다 먼저 잡게 했다",
     "결함을 심은 시험 행으로 검증 에이전트를 채점하고, 놓친 유형만 겨냥해 규칙을 고친 뒤 다시 쟀다: 같은 세트 66.7%→91.7%, 규칙을 고친 뒤 새로 만든 holdout 33.3%→66.7%, 오탐 0 유지. 프롬프트로 안 되는 항목(기사 제목 대조)은 스크립트로 옮길 대상으로 분리했다",
-    "실행 로그 26회를 장부로 모아 사고 3종(회사 이메일·무단 알림·보조 에이전트 위임)을 도구 차단과 프롬프트 규칙으로 막고, 적용 뒤 위반 0건을 확인했다",
+    "실행 308회를 장부로 모으고 그중 47회의 로그를 읽어, 사고 3종(회사 이메일, 무단 알림, 보조 에이전트 위임)을 도구 차단과 프롬프트 규칙으로 막은 뒤 읽은 실행에서 위반 0건을 확인했다(2026-11-06 기준)",
     "프롬프트를 규칙 파일에서 조립하고 배포 뒤 저장본과 글자 단위로 대조하는 절차로 손 복사 오류를 막았다"
    ],
    "title_en": "Agent design · evaluation · guardrails",
    "bullets_en": [
     "Designed 10 scheduled cloud routines split into research, verify, summarize and event roles; the verifier recomputes every number from the source so errors are caught before a human sees them",
     "Graded the verifier on rows with planted defects, patched rules only for the misses and re-graded: same set 66.7% → 91.7%, fresh holdout 33.3% → 66.7%, zero false alarms. Checks prompts can't do reliably (headline matching) were split out for a script",
-    "Logged 26 runs into a ledger and closed three incident classes (invented e-mail, unrequested notifications, sub-agent delegation) with tool blocks and prompt rules — 0 violations after",
+    "Logged 308 runs into a ledger, read 47 of the logs, and closed three incident classes (invented e-mail, unrequested notifications, sub-agent delegation) with tool blocks and prompt rules: 0 violations in the runs read after the fix (as of 2026-11-06)",
     "Prompts are assembled from rule files and the deployed copy is diffed character-by-character against source"
    ]
   },
@@ -152,13 +152,13 @@
    "title": "데이터 파이프라인·품질",
    "bullets": [
     "원출처(Yahoo·Nasdaq·네이버·SEC) → 원자료 보존 → 계산 → Notion upsert(자산+기준 시각 멱등 키)로 이어지는 흐름과 품질 장치를 문서화했다",
-    "실적 발표 시점을 SEC 8-K 접수 시각으로 결정하도록 바꿔 13행을 재측정했고, 이벤트 반응 값을 가격 이력으로 다시 계산해 전부 일치시켰다",
+    "실적 발표 시점을 SEC 8-K 접수 시각으로 결정하도록 바꿔 13행을 재측정했고, 이벤트 반응 값을 가격 이력으로 다시 계산해 DB와 대조했다(2026-11-06 기준 55행 중 51행 일치, 나머지 4행은 2026년 3분기 국내 실적)",
     "표준 라이브러리만으로 지표·백필·평가 스크립트를 만들어 어느 환경에서나 재현되게 했다"
    ],
    "title_en": "Data pipeline · quality",
    "bullets_en": [
     "Documented the flow source (Yahoo · Nasdaq · Naver · SEC) → raw archive → compute → Notion upsert with an idempotent asset+timestamp key",
-    "Switched earnings timing to SEC 8-K acceptance time, re-measured 13 rows, and recomputed all event reactions from price history (42/42 match)",
+    "Switched earnings timing to SEC 8-K acceptance time, re-measured 13 rows, and recomputed event reactions from price history against the DB (51/55 rows match as of 2026-11-06; the other 4 are Q3 2026 Korean earnings)",
     "Indicators, backfill and eval scripts use the Python standard library only, so they reproduce anywhere"
    ]
   },
@@ -169,13 +169,13 @@
    "bullets": [
     "겹치는 표본 백테스트가 만든 '규칙이 거꾸로 작동한다'는 착시를 겹치지 않는 창과 부트스트랩으로 바로잡고, 규칙이 수익이 아니라 낙폭을 줄이는 도구임을 보였다",
     "실적 발표 반응을 평소 변동성 대비 배수로 표준화해, 전날 브리핑이 방향이 아니라 흔들림의 크기를 알리게 했다",
-    "표본 밖 성과를 2026-09-26부터 따로 쌓아 사후 점검과 섞이지 않게 했다"
+    "표본 밖 성과를 2026-09-26부터 별도 표로 쌓는다. 사후 점검은 전체 기간을 다시 재므로 기간은 겹친다"
    ],
    "title_en": "Analysis · insight",
    "bullets_en": [
     "Corrected an overlapping-window backtest that suggested the rule 'works backwards'; with non-overlapping windows and bootstrap CIs the rule reduces drawdown rather than adding return",
     "Normalized earnings reactions by each asset's typical daily move, so the pre-event brief warns about size of the move, not direction",
-    "Out-of-sample tracking starts 2026-09-26 and is kept separate from the in-sample check"
+    "Out-of-sample tracking starts 2026-09-26 in its own table; the in-sample check re-measures the whole period, so the dates overlap"
    ]
   }
  ]
